@@ -1,0 +1,517 @@
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
+
+const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
+
+const DEFAULT_SETTINGS = {
+  guiaNome: 'Daniel Kochinski',
+  guiaEndereco: '9510 Wooded Hills dr',
+  guiaEmail: 'danielkochinski@gmail.com',
+  guiaTelefone: '702-542-8667',
+  clienteNome: 'LAS VEGAS VIP SERVICES ONE LLC',
+  clienteEndereco: '2566 LA CARA AVE',
+  clienteCidade: 'LAS VEGAS, NV, 89121',
+  proximoInvoiceNum: 51,
+  cityTourLimite: 15,
+  cityTourTaxaAte: 15,
+  cityTourTaxaDepois: 20,
+};
+
+type Entry = {
+  id: string;
+  data: string;
+  tour: string;
+  valorTour: string;
+  espanhol: string; portugues: string; italiano: string; ingles: string;
+  cityQtd: string; cityPreco: string;
+  heliQtd: string; heliPreco: string;
+  tipPax: string; tipGas: string;
+  pagamentoInvoice: string;
+  moods: string[];
+  nota: string;
+  obs: string;
+};
+
+type Settings = typeof DEFAULT_SETTINGS;
+
+function emptyEntry(): Entry {
+  return {
+    id: crypto.randomUUID(),
+    data: new Date().toISOString().slice(0,10),
+    tour: 'GCW',
+    valorTour: '',
+    espanhol: '', portugues: '', italiano: '', ingles: '',
+    cityQtd: '', cityPreco: '',
+    heliQtd: '', heliPreco: '',
+    tipPax: '', tipGas: '',
+    pagamentoInvoice: '',
+    moods: [],
+    nota: '',
+    obs: '',
+  };
+}
+
+function num(v: string | number) { const n = parseFloat(String(v)); return isNaN(n) ? 0 : n; }
+function money(v: number) { return v.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function computeEntry(e: Entry, settings: Settings) {
+  const clientesTotal = num(e.espanhol)+num(e.portugues)+num(e.italiano)+num(e.ingles);
+  const cityTotal = num(e.cityQtd) * num(e.cityPreco);
+  const heliTotal = num(e.heliQtd) * num(e.heliPreco);
+  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal;
+  const tipTotal = num(e.tipPax) + num(e.tipGas);
+  const pagamentoTotal = num(e.pagamentoInvoice) + vendasTotal;
+
+  const qtd = num(e.cityQtd);
+  const limite = num(settings.cityTourLimite);
+  const taxaAte = num(settings.cityTourTaxaAte);
+  const taxaDepois = num(settings.cityTourTaxaDepois);
+  let comissaoCity = 0;
+  if (qtd <= limite) comissaoCity = qtd * taxaAte;
+  else comissaoCity = limite * taxaAte + (qtd - limite) * taxaDepois;
+
+  return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
+}
+
+function Field({label, children}: {label: string, children: React.ReactNode}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-slate-600">
+      <span className="font-medium">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+const inputCls = "border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400";
+
+export default function Dashboard() {
+  const [tab, setTab] = useState('lancamentos');
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [form, setForm] = useState<Entry>(emptyEntry());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
+  const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [entriesRes, settingsRes] = await Promise.all([
+          fetch('/api/entries'), fetch('/api/settings')
+        ]);
+        const entriesJson = await entriesRes.json();
+        const settingsJson = await settingsRes.json();
+        if (entriesJson.entries) setEntries(entriesJson.entries);
+        if (settingsJson.settings) setSettings({...DEFAULT_SETTINGS, ...settingsJson.settings});
+      } catch (err: any) {
+        setErrorMsg('Não foi possível carregar os dados. Verifique a conexão com o banco.');
+      } finally {
+        setLoaded(true);
+      }
+    })();
+  }, []);
+
+  const sorted = useMemo(() => [...entries].sort((a,b)=>a.data.localeCompare(b.data)), [entries]);
+
+  async function saveEntry() {
+    setSaving(true);
+    setErrorMsg(null);
+    try {
+      if (editingId) {
+        const res = await fetch(`/api/entries/${editingId}`, {
+          method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(form)
+        });
+        if (!res.ok) throw new Error('Falha ao salvar');
+        setEntries(entries.map(e => e.id === editingId ? form : e));
+      } else {
+        const newEntry = {...form, id: crypto.randomUUID()};
+        const res = await fetch('/api/entries', {
+          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(newEntry)
+        });
+        if (!res.ok) throw new Error('Falha ao salvar');
+        setEntries([...entries, newEntry]);
+      }
+      setForm(emptyEntry());
+      setEditingId(null);
+    } catch (err: any) {
+      setErrorMsg('Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editEntry(e: Entry) { setForm(e); setEditingId(e.id); setTab('lancamentos'); }
+
+  async function removeEntry(id: string) {
+    try {
+      await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+      setEntries(entries.filter(e=>e.id!==id));
+    } catch (err) {
+      setErrorMsg('Não foi possível excluir. Tente novamente.');
+    }
+  }
+
+  function toggleMood(m: string) {
+    setForm(f => ({...f, moods: f.moods.includes(m) ? f.moods.filter(x=>x!==m) : [...f.moods, m]}));
+  }
+
+  async function persistSettings(next: Settings) {
+    setSettings(next);
+    try {
+      await fetch('/api/settings', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
+      });
+    } catch (err) {
+      setErrorMsg('Não foi possível salvar as configurações.');
+    }
+  }
+
+  const monthly = useMemo(() => {
+    const map: Record<string, {faturado:number, clientes:number, comissao:number, servicos:number, tips:number}> = {};
+    sorted.forEach(e => {
+      const key = e.data ? e.data.slice(0,7) : 'Sem data';
+      const c = computeEntry(e, settings);
+      if (!map[key]) map[key] = {faturado:0, clientes:0, comissao:0, servicos:0, tips:0};
+      map[key].faturado += c.vendasTotal;
+      map[key].clientes += c.clientesTotal;
+      map[key].comissao += c.comissaoCity;
+      map[key].tips += c.tipTotal;
+      map[key].servicos += 1;
+    });
+    return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
+  }, [sorted, settings]);
+
+  const moodCounts = useMemo(() => {
+    const counts: Record<string, number> = {}; MOODS.forEach(m=>counts[m]=0);
+    sorted.forEach(e => (e.moods||[]).forEach(m => { counts[m] = (counts[m]||0)+1; }));
+    return counts;
+  }, [sorted]);
+
+  const avgNota = useMemo(() => {
+    const withNota = sorted.filter(e => e.nota !== '' && e.nota !== undefined && e.nota !== null);
+    if (!withNota.length) return null;
+    return (withNota.reduce((s,e)=>s+num(e.nota),0) / withNota.length).toFixed(1);
+  }, [sorted]);
+
+  const invoiceEntries = useMemo(() => {
+    if (!invoiceRange.start || !invoiceRange.end) return [];
+    return sorted.filter(e => e.data >= invoiceRange.start && e.data <= invoiceRange.end);
+  }, [sorted, invoiceRange]);
+
+  const invoiceTotal = useMemo(() => invoiceEntries.reduce((s,e)=>{
+    const c = computeEntry(e, settings);
+    return s + c.vendasTotal;
+  }, 0), [invoiceEntries, settings]);
+
+  function startInvoice() { setInvoiceNum(settings.proximoInvoiceNum); }
+  async function finalizeInvoice() {
+    const next = {...settings, proximoInvoiceNum: settings.proximoInvoiceNum + 1};
+    await persistSettings(next);
+    setInvoiceNum(null);
+    setInvoiceRange({start:'', end:''});
+  }
+
+  const TABS: [string,string][] = [
+    ['lancamentos','Lançamentos'],
+    ['relatorios','Relatórios'],
+    ['invoice','Invoice'],
+    ['config','Configurações'],
+  ];
+
+  if (!loaded) {
+    return <div className="max-w-5xl mx-auto px-4 py-10 text-sm text-slate-500">Carregando...</div>;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800">
+      <div className="no-print max-w-5xl mx-auto px-4 pt-6 pb-2">
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
+        <p className="text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+        {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
+        <div className="flex gap-1 mt-4 border-b border-slate-200">
+          {TABS.map(([key,label]) => (
+            <button key={key} onClick={()=>setTab(key)}
+              className={`px-4 py-2 text-sm font-medium rounded-t-md -mb-px border-b-2 transition ${tab===key ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === 'lancamentos' && (
+        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Field label="Data"><input type="date" className={inputCls} value={form.data} onChange={e=>setForm({...form,data:e.target.value})}/></Field>
+              <Field label="Tour"><input className={inputCls} value={form.tour} onChange={e=>setForm({...form,tour:e.target.value})}/></Field>
+              <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
+              <Field label="Espanhol"><input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
+              <Field label="Portugues"><input type="number" className={inputCls} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
+              <Field label="Italiano"><input type="number" className={inputCls} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
+              <Field label="Ingles"><input type="number" className={inputCls} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
+              <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
+              <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
+              <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
+              <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
+              <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
+              <Field label="Tip Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
+              <Field label="Pagamento Invoice ($)"><input type="number" className={inputCls} value={form.pagamentoInvoice} onChange={e=>setForm({...form,pagamentoInvoice:e.target.value})}/></Field>
+            </div>
+
+            <div className="mt-4">
+              <span className="text-xs font-medium text-slate-600">Como você estava hoje? (pode marcar mais de um)</span>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {MOODS.map(m => (
+                  <button key={m} type="button" onClick={()=>toggleMood(m)}
+                    className={`px-3 py-1 rounded-full text-xs border transition ${form.moods.includes(m) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3">
+              <span className="text-xs font-medium text-slate-600">Nota do tour (0 a 5)</span>
+              <div className="flex gap-1">
+                {[0,1,2,3,4,5].map(n => (
+                  <button key={n} type="button" onClick={()=>setForm({...form,nota:String(n)})}
+                    className={`w-8 h-8 rounded text-sm border ${Number(form.nota)===n ? 'bg-amber-400 border-amber-500 text-white' : 'bg-white border-slate-300 text-slate-600'}`}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Field label="Observação">
+              <textarea className={inputCls + " mt-2 w-full"} rows={2} value={form.obs} onChange={e=>setForm({...form,obs:e.target.value})}/>
+            </Field>
+
+            <div className="mt-4 flex gap-2">
+              <button disabled={saving} onClick={saveEntry} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50">
+                {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Adicionar lançamento'}
+              </button>
+              {editingId && (
+                <button onClick={()=>{setForm(emptyEntry());setEditingId(null);}} className="text-sm px-4 py-2 rounded border border-slate-300">Cancelar</button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="p-2 text-left">Data</th>
+                  <th className="p-2 text-left">Tour</th>
+                  <th className="p-2 text-right">Clientes</th>
+                  <th className="p-2 text-right">Vendas Total $</th>
+                  <th className="p-2 text-right">Comissão City</th>
+                  <th className="p-2 text-right">Tip Total</th>
+                  <th className="p-2 text-center">Nota</th>
+                  <th className="p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map(e => {
+                  const c = computeEntry(e, settings);
+                  return (
+                    <tr key={e.id} className="border-t border-slate-100">
+                      <td className="p-2">{e.data}</td>
+                      <td className="p-2">{e.tour}</td>
+                      <td className="p-2 text-right">{c.clientesTotal}</td>
+                      <td className="p-2 text-right">${money(c.vendasTotal)}</td>
+                      <td className="p-2 text-right">${money(c.comissaoCity)}</td>
+                      <td className="p-2 text-right">${money(c.tipTotal)}</td>
+                      <td className="p-2 text-center">{e.nota !== '' ? e.nota : '-'}</td>
+                      <td className="p-2 text-right whitespace-nowrap">
+                        <button onClick={()=>editEntry(e)} className="text-slate-500 hover:text-slate-900 mr-2">Editar</button>
+                        <button onClick={()=>removeEntry(e.id)} className="text-red-500 hover:text-red-700">Excluir</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {sorted.length===0 && <tr><td colSpan={8} className="p-4 text-center text-slate-400">Nenhum lançamento ainda.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'config' && (
+        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Comissão do City Tour</h2>
+            <p className="text-xs text-slate-500 mb-3">Até o limite de tours vendidos, aplica uma taxa; acima disso, aplica outra taxa por tour.</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Limite de tours (ex: 15)"><input type="number" className={inputCls} value={settings.cityTourLimite} onChange={e=>persistSettings({...settings,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa até o limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaAte} onChange={e=>persistSettings({...settings,cityTourTaxaAte:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa acima do limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaDepois} onChange={e=>persistSettings({...settings,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Dados para a Invoice</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Seu nome (guia)"><input className={inputCls} value={settings.guiaNome} onChange={e=>persistSettings({...settings,guiaNome:e.target.value})}/></Field>
+              <Field label="Seu endereço"><input className={inputCls} value={settings.guiaEndereco} onChange={e=>persistSettings({...settings,guiaEndereco:e.target.value})}/></Field>
+              <Field label="Seu e-mail"><input className={inputCls} value={settings.guiaEmail} onChange={e=>persistSettings({...settings,guiaEmail:e.target.value})}/></Field>
+              <Field label="Seu telefone"><input className={inputCls} value={settings.guiaTelefone} onChange={e=>persistSettings({...settings,guiaTelefone:e.target.value})}/></Field>
+              <Field label="Cliente (Billed To) - nome"><input className={inputCls} value={settings.clienteNome} onChange={e=>persistSettings({...settings,clienteNome:e.target.value})}/></Field>
+              <Field label="Cliente - endereço"><input className={inputCls} value={settings.clienteEndereco} onChange={e=>persistSettings({...settings,clienteEndereco:e.target.value})}/></Field>
+              <Field label="Cliente - cidade/estado/CEP"><input className={inputCls} value={settings.clienteCidade} onChange={e=>persistSettings({...settings,clienteCidade:e.target.value})}/></Field>
+              <Field label="Próximo número de invoice"><input type="number" className={inputCls} value={settings.proximoInvoiceNum} onChange={e=>persistSettings({...settings,proximoInvoiceNum:parseInt(e.target.value)||0})}/></Field>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab === 'relatorios' && (
+        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4 overflow-x-auto">
+            <h2 className="text-sm font-semibold mb-3">Resumo por mês</h2>
+            <table className="w-full text-xs">
+              <thead className="bg-slate-100 text-slate-600">
+                <tr>
+                  <th className="p-2 text-left">Mês</th>
+                  <th className="p-2 text-right">Serviços</th>
+                  <th className="p-2 text-right">Clientes</th>
+                  <th className="p-2 text-right">Faturado</th>
+                  <th className="p-2 text-right">Comissão City Tour</th>
+                  <th className="p-2 text-right">Tips</th>
+                </tr>
+              </thead>
+              <tbody>
+                {monthly.map(([mes, v]) => (
+                  <tr key={mes} className="border-t border-slate-100">
+                    <td className="p-2">{mes}</td>
+                    <td className="p-2 text-right">{v.servicos}</td>
+                    <td className="p-2 text-right">{v.clientes}</td>
+                    <td className="p-2 text-right">${money(v.faturado)}</td>
+                    <td className="p-2 text-right">${money(v.comissao)}</td>
+                    <td className="p-2 text-right">${money(v.tips)}</td>
+                  </tr>
+                ))}
+                {monthly.length===0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">Sem dados ainda.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Quadro de sentimentos</h2>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              {MOODS.map(m => (
+                <div key={m} className="border border-slate-200 rounded p-2 text-center">
+                  <div className="text-xs text-slate-500">{m}</div>
+                  <div className="text-lg font-semibold">{moodCounts[m]}</div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-slate-500 mt-3">Nota média dos tours: <span className="font-semibold text-slate-800">{avgNota ?? '—'}</span> / 5</p>
+          </div>
+        </div>
+      )}
+
+      {tab === 'invoice' && (
+        <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
+          <div className="no-print bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Gerar Invoice</h2>
+            <div className="flex flex-wrap gap-3 items-end">
+              <Field label="De"><input type="date" className={inputCls} value={invoiceRange.start} onChange={e=>setInvoiceRange({...invoiceRange,start:e.target.value})}/></Field>
+              <Field label="Até"><input type="date" className={inputCls} value={invoiceRange.end} onChange={e=>setInvoiceRange({...invoiceRange,end:e.target.value})}/></Field>
+              <button onClick={startInvoice} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700">Gerar prévia</button>
+              {invoiceNum && (
+                <>
+                  <button onClick={()=>window.print()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Imprimir / Salvar PDF</button>
+                  <button onClick={finalizeInvoice} className="text-sm px-4 py-2 rounded border border-emerald-500 text-emerald-700">Confirmar invoice enviada (avança numeração)</button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {invoiceNum && (
+            <div className="print-area bg-white rounded-lg border border-slate-200 p-8 text-sm">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <div className="text-lg font-bold tracking-wide">INVOICE</div>
+                  <div>{invoiceNum}/{new Date().getFullYear()}</div>
+                </div>
+                <div className="text-right text-xs">
+                  <div className="font-semibold">DATE OF ISSUE</div>
+                  <div>{new Date().toLocaleDateString('en-US')}</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6 mb-6 text-xs">
+                <div>
+                  <div className="font-semibold">{settings.guiaNome}</div>
+                  <div>{settings.guiaEndereco}</div>
+                  <div>{settings.guiaEmail}</div>
+                  <div>{settings.guiaTelefone}</div>
+                </div>
+                <div>
+                  <div className="font-semibold">BILLED TO</div>
+                  <div>{settings.clienteNome}</div>
+                  <div>{settings.clienteEndereco}</div>
+                  <div>{settings.clienteCidade}</div>
+                </div>
+              </div>
+              <table className="w-full text-xs border-t border-slate-300">
+                <thead>
+                  <tr className="border-b border-slate-300">
+                    <th className="text-left py-1">Days</th>
+                    <th className="text-left py-1">Service Description</th>
+                    <th className="text-right py-1">Unit Cost</th>
+                    <th className="text-right py-1">Total Amount</th>
+                    <th className="text-right py-1">Pax</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoiceEntries.map((e,i) => {
+                    const c = computeEntry(e, settings);
+                    const dataFmt = e.data.slice(5,7)+'/'+e.data.slice(8,10)+'/'+e.data.slice(2,4);
+                    return (
+                      <React.Fragment key={e.id}>
+                        <tr>
+                          <td className="py-1 align-top">{i+1}</td>
+                          <td className="py-1 align-top">{dataFmt}: {e.tour}</td>
+                          <td className="py-1 text-right align-top">{money(num(e.valorTour))}</td>
+                          <td className="py-1 text-right align-top">{money(num(e.valorTour))}</td>
+                          <td className="py-1 text-right align-top">{c.clientesTotal}</td>
+                        </tr>
+                        {num(e.cityQtd) > 0 && (
+                          <tr className="text-slate-500">
+                            <td></td>
+                            <td className="py-1">{dataFmt}: Comissão {e.cityQtd} City Tour</td>
+                            <td className="py-1 text-right">{money(c.comissaoCity)}</td>
+                            <td className="py-1 text-right">{money(c.comissaoCity)}</td>
+                            <td></td>
+                          </tr>
+                        )}
+                        {num(e.heliQtd) > 0 && (
+                          <tr className="text-slate-500">
+                            <td></td>
+                            <td className="py-1">{dataFmt}: Comissão {e.heliQtd} Helicóptero</td>
+                            <td className="py-1 text-right">{money(c.heliTotal)}</td>
+                            <td className="py-1 text-right">{money(c.heliTotal)}</td>
+                            <td></td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="flex justify-end mt-4 border-t border-slate-300 pt-2">
+                <div className="text-sm font-semibold">Invoice Total: ${money(invoiceTotal)}</div>
+              </div>
+              {invoiceEntries.length===0 && <div className="text-center text-slate-400 py-6">Selecione um período com lançamentos.</div>}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

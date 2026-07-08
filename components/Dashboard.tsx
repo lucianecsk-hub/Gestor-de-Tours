@@ -65,16 +65,21 @@ function computeEntry(e: Entry, settings: Settings) {
   const vendasTotal = num(e.valorTour) + cityTotal + heliTotal;
   const tipTotal = num(e.tipPax) + num(e.tipGas);
   const pagamentoTotal = num(e.pagamentoInvoice) + vendasTotal;
-
-  const qtd = num(e.cityQtd);
-  const qtdTotal = num(e.cityQtdTotal || e.cityQtd);
-  const limite = num(settings.cityTourLimite);
-  const taxaAte = num(settings.cityTourTaxaAte);
-  const taxaDepois = num(settings.cityTourTaxaDepois);
-  const taxaAplicada = qtdTotal <= limite ? taxaAte : taxaDepois;
-  const comissaoCity = qtd * taxaAplicada;
+  const comissaoCity = cityTotal;
 
   return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
+}
+
+// Quinzena = ciclo de faturamento: dia 1-15 e dia 16-fim do mes
+function quinzenaBounds(dateStr: string) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const yyyy = String(y);
+  const mm = String(m).padStart(2, '0');
+  if (d <= 15) {
+    return { start: `${yyyy}-${mm}-01`, end: `${yyyy}-${mm}-15` };
+  }
+  const lastDay = new Date(y, m, 0).getDate();
+  return { start: `${yyyy}-${mm}-16`, end: `${yyyy}-${mm}-${String(lastDay).padStart(2,'0')}` };
 }
 
 function Field({label, children, className}: {label: string, children: React.ReactNode, className?: string}) {
@@ -130,6 +135,23 @@ export default function Dashboard() {
   }, [session]);
 
   const sorted = useMemo(() => [...entries].sort((a,b)=>a.data.localeCompare(b.data)), [entries]);
+
+  const quinzenaTotal = useMemo(() => {
+    if (!form.data) return 0;
+    const { start, end } = quinzenaBounds(form.data);
+    const somaOutrasEntradas = entries
+      .filter(en => en.id !== editingId && en.data >= start && en.data <= end)
+      .reduce((s, en) => s + num(en.cityQtd), 0);
+    return somaOutrasEntradas + num(form.cityQtd);
+  }, [form.data, form.cityQtd, entries, editingId]);
+
+  useEffect(() => {
+    if (num(form.cityQtd) <= 0) return;
+    const limite = num(settings.cityTourLimite);
+    const taxa = quinzenaTotal <= limite ? settings.cityTourTaxaAte : settings.cityTourTaxaDepois;
+    setForm(f => ({ ...f, cityQtdTotal: String(quinzenaTotal), cityPreco: String(taxa) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quinzenaTotal, settings.cityTourLimite, settings.cityTourTaxaAte, settings.cityTourTaxaDepois]);
 
   async function saveEntry() {
     if (!session) return;
@@ -323,9 +345,10 @@ export default function Dashboard() {
 
               <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
-                <Field label="City Tour - Qtd. Total"><input type="number" className={inputCls} value={form.cityQtdTotal} onChange={e=>setForm({...form,cityQtdTotal:e.target.value})}/></Field>
+                <Field label="City Tour - Qtd. Total (quinzena)"><input type="number" className={inputCls} value={form.cityQtdTotal} onChange={e=>setForm({...form,cityQtdTotal:e.target.value})}/></Field>
                 <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
               </div>
+              <p className="text-xs text-slate-400 -mt-2">Preenchido automaticamente: $10 até 14 city tours na quinzena, $15 a partir de 15. Pode editar se precisar.</p>
 
               <div className="flex flex-wrap gap-3">
                 <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>

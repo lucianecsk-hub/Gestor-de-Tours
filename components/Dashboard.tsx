@@ -65,7 +65,7 @@ function computeEntry(e: Entry, settings: Settings) {
   const heliTotal = num(e.heliQtd) * num(e.heliPreco);
   const vendasTotal = num(e.valorTour) + cityTotal + heliTotal;
   const tipTotal = num(e.tipPax) + num(e.tipGas);
-  const pagamentoTotal = num(e.pagamentoInvoice) + vendasTotal;
+  const pagamentoTotal = num(e.pagamentoInvoice) + tipTotal;
   const comissaoCity = cityTotal;
 
   return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
@@ -159,6 +159,14 @@ export default function Dashboard() {
     setForm(f => ({ ...f, heliPreco: String(settings.heliTaxa) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.heliQtd, settings.heliTaxa]);
+
+  useEffect(() => {
+    const cityTotal = num(form.cityQtd) * num(form.cityPreco);
+    const heliTotal = num(form.heliQtd) * num(form.heliPreco);
+    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal;
+    setForm(f => ({ ...f, pagamentoInvoice: vendasTotal ? String(vendasTotal) : '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco]);
 
   async function saveEntry() {
     if (!session) return;
@@ -382,6 +390,16 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-3">
                 <Field label="Pagamento Invoice ($)"><input type="number" className={inputCls} value={form.pagamentoInvoice} onChange={e=>setForm({...form,pagamentoInvoice:e.target.value})}/></Field>
               </div>
+              <p className="text-xs text-slate-400 -mt-2">Preenchido automaticamente: Valor do Tour + City Tour + Helicóptero. Pode editar se precisar.</p>
+
+              <div className="flex flex-wrap gap-3">
+                <Field label="Pagamento Total ($)">
+                  <div className={inputCls + " bg-slate-100 text-slate-700 font-semibold"}>
+                    ${money(num(form.pagamentoInvoice) + num(form.tipGas) + num(form.tipPax))}
+                  </div>
+                </Field>
+              </div>
+              <p className="text-xs text-slate-400 -mt-2">Pagamento Invoice + Tip Gas + Tip Pax (calculado automaticamente).</p>
             </div>
 
             <div className="mt-4">

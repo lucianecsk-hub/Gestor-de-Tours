@@ -168,21 +168,61 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco]);
 
+  async function recalcQuinzena(allEntries: Entry[], dateStr: string, userId: string): Promise<Entry[]> {
+    if (!dateStr) return allEntries;
+    const { start, end } = quinzenaBounds(dateStr);
+    const inRange = allEntries.filter(en => en.data >= start && en.data <= end);
+    const total = inRange.reduce((s, en) => s + num(en.cityQtd), 0);
+    const limite = num(settings.cityTourLimite);
+    const rate = total <= limite ? num(settings.cityTourTaxaAte) : num(settings.cityTourTaxaDepois);
+    const rateStr = String(rate);
+    const totalStr = String(total);
+
+    const toPersist: Entry[] = [];
+    const updated = allEntries.map(en => {
+      if (en.data >= start && en.data <= end && num(en.cityQtd) > 0 && (en.cityPreco !== rateStr || en.cityQtdTotal !== totalStr)) {
+        const novoCityTotal = num(en.cityQtd) * rate;
+        const heliTotal = num(en.heliQtd) * num(en.heliPreco);
+        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal;
+        const newEn = { ...en, cityPreco: rateStr, cityQtdTotal: totalStr, pagamentoInvoice: novoVendasTotal ? String(novoVendasTotal) : en.pagamentoInvoice };
+        toPersist.push(newEn);
+        return newEn;
+      }
+      return en;
+    });
+
+    for (const en of toPersist) {
+      await supabase.from('entries').update({ data: en }).eq('id', en.id).eq('user_id', userId);
+    }
+    return updated;
+  }
+
   async function saveEntry() {
     if (!session) return;
     setSaving(true);
     setErrorMsg(null);
     try {
+      let newEntriesLocal: Entry[];
+      const oldEntry = editingId ? entries.find(e => e.id === editingId) : undefined;
       if (editingId) {
         const { error } = await supabase.from('entries').update({ data: form }).eq('id', editingId).eq('user_id', session.user.id);
         if (error) throw error;
-        setEntries(entries.map(e => e.id === editingId ? form : e));
+        newEntriesLocal = entries.map(e => e.id === editingId ? form : e);
       } else {
         const newEntry = {...form, id: crypto.randomUUID()};
         const { error } = await supabase.from('entries').insert({ id: newEntry.id, user_id: session.user.id, data: newEntry });
         if (error) throw error;
-        setEntries([...entries, newEntry]);
+        newEntriesLocal = [...entries, newEntry];
       }
+      let result = await recalcQuinzena(newEntriesLocal, form.data, session.user.id);
+      if (oldEntry && oldEntry.data !== form.data) {
+        const bOld = quinzenaBounds(oldEntry.data);
+        const bNew = quinzenaBounds(form.data);
+        if (bOld.start !== bNew.start) {
+          result = await recalcQuinzena(result, oldEntry.data, session.user.id);
+        }
+      }
+      setEntries(result);
       setForm(emptyEntry());
       setEditingId(null);
     } catch (err: any) {
@@ -197,9 +237,12 @@ export default function Dashboard() {
   async function removeEntry(id: string) {
     if (!session) return;
     try {
+      const removed = entries.find(e => e.id === id);
       const { error } = await supabase.from('entries').delete().eq('id', id).eq('user_id', session.user.id);
       if (error) throw error;
-      setEntries(entries.filter(e=>e.id!==id));
+      const remaining = entries.filter(e=>e.id!==id);
+      const result = removed ? await recalcQuinzena(remaining, removed.data, session.user.id) : remaining;
+      setEntries(result);
     } catch (err: any) {
       setErrorMsg('Não foi possível excluir: ' + err.message);
     }

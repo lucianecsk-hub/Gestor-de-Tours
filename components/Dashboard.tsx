@@ -270,7 +270,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-800">
+    <div className="min-h-screen bg-blue-50 text-slate-800">
       <div className="no-print max-w-5xl mx-auto px-4 pt-6 pb-2">
         <div className="flex justify-between items-start">
           <div>
@@ -283,10 +283,10 @@ export default function Dashboard() {
           </div>
         </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
-        <div className="flex gap-1 mt-4 border-b border-slate-200">
+        <div className="flex gap-1 mt-4 bg-blue-100 rounded-lg p-1 w-fit">
           {TABS.map(([key,label]) => (
             <button key={key} onClick={()=>setTab(key)}
-              className={`px-4 py-2 text-sm font-medium rounded-t-md -mb-px border-b-2 transition ${tab===key ? 'border-slate-900 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-200/60'}`}>
               {label}
             </button>
           ))}
@@ -296,22 +296,44 @@ export default function Dashboard() {
       {tab === 'lancamentos' && (
         <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <h2 className="text-sm font-semibold mb-3">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <Field label="Data"><input type="date" className={inputCls} value={form.data} onChange={e=>setForm({...form,data:e.target.value})}/></Field>
-              <Field label="Tour"><input className={inputCls} value={form.tour} onChange={e=>setForm({...form,tour:e.target.value})}/></Field>
-              <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
-              <Field label="Espanhol"><input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
-              <Field label="Portugues"><input type="number" className={inputCls} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
-              <Field label="Italiano"><input type="number" className={inputCls} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
-              <Field label="Ingles"><input type="number" className={inputCls} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
-              <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
-              <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
-              <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
-              <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
-              <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
-              <Field label="Tip Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
-              <Field label="Pagamento Invoice ($)"><input type="number" className={inputCls} value={form.pagamentoInvoice} onChange={e=>setForm({...form,pagamentoInvoice:e.target.value})}/></Field>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
+              <div className="w-40">
+                <input type="date" className={inputCls + " w-full"} value={form.data} onChange={e=>setForm({...form,data:e.target.value})}/>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <Field label="Tour"><input className={inputCls} value={form.tour} onChange={e=>setForm({...form,tour:e.target.value})}/></Field>
+                <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
+              </div>
+
+              <div className="flex gap-3">
+                <Field label="Portugues"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
+                <Field label="Italiano"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
+                <Field label="Ingles"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
+                <Field label="Espanhol"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
+              </div>
+
+              <div className="flex gap-3">
+                <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
+                <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
+              </div>
+
+              <div className="flex gap-3">
+                <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
+                <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
+              </div>
+
+              <div className="flex gap-3">
+                <Field label="Tip Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
+                <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
+              </div>
+
+              <div className="flex gap-3">
+                <Field label="Pagamento Invoice ($)"><input type="number" className={inputCls} value={form.pagamentoInvoice} onChange={e=>setForm({...form,pagamentoInvoice:e.target.value})}/></Field>
+              </div>
             </div>
 
             <div className="mt-4">

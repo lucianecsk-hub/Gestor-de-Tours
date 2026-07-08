@@ -323,7 +323,7 @@ export default function Dashboard() {
 
               <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
-                <Field label="City Tour - Quantidade Total"><input type="number" className={inputCls} value={form.cityQtdTotal} onChange={e=>setForm({...form,cityQtdTotal:e.target.value})}/></Field>
+                <Field label="City Tour - Qtd. Total"><input type="number" className={inputCls} value={form.cityQtdTotal} onChange={e=>setForm({...form,cityQtdTotal:e.target.value})}/></Field>
                 <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
               </div>
 

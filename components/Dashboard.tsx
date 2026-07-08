@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
+  const [customRange, setCustomRange] = useState({start:'', end:''});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -180,6 +181,29 @@ export default function Dashboard() {
       setErrorMsg('Não foi possível salvar as configurações: ' + err.message);
     }
   }
+
+  const customEntries = useMemo(() => {
+    if (!customRange.start || !customRange.end) return [];
+    return sorted.filter(e => e.data >= customRange.start && e.data <= customRange.end);
+  }, [sorted, customRange]);
+
+  const customStats = useMemo(() => {
+    const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, comissao:0, tips:0, heli:0 };
+    customEntries.forEach(e => {
+      const c = computeEntry(e, settings);
+      s.servicos += 1;
+      s.espanhol += num(e.espanhol);
+      s.portugues += num(e.portugues);
+      s.italiano += num(e.italiano);
+      s.ingles += num(e.ingles);
+      s.clientes += c.clientesTotal;
+      s.faturado += c.vendasTotal;
+      s.comissao += c.comissaoCity;
+      s.tips += c.tipTotal;
+      s.heli += num(e.heliQtd);
+    });
+    return s;
+  }, [customEntries, settings]);
 
   const monthly = useMemo(() => {
     const map: Record<string, {faturado:number, clientes:number, comissao:number, servicos:number, tips:number}> = {};
@@ -398,6 +422,60 @@ export default function Dashboard() {
 
       {tab === 'relatorios' && (
         <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Relatório por período (escolha as datas)</h2>
+            <div className="flex flex-wrap gap-3 items-end mb-4">
+              <Field label="De"><input type="date" className={inputCls} value={customRange.start} onChange={e=>setCustomRange({...customRange,start:e.target.value})}/></Field>
+              <Field label="Até"><input type="date" className={inputCls} value={customRange.end} onChange={e=>setCustomRange({...customRange,end:e.target.value})}/></Field>
+            </div>
+            {customRange.start && customRange.end ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Serviços</div>
+                  <div className="text-lg font-semibold">{customStats.servicos}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Total de clientes</div>
+                  <div className="text-lg font-semibold">{customStats.clientes}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Espanhol</div>
+                  <div className="text-lg font-semibold">{customStats.espanhol}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Português</div>
+                  <div className="text-lg font-semibold">{customStats.portugues}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Italiano</div>
+                  <div className="text-lg font-semibold">{customStats.italiano}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Inglês</div>
+                  <div className="text-lg font-semibold">{customStats.ingles}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Helicóptero vendidos</div>
+                  <div className="text-lg font-semibold">{customStats.heli}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Faturado</div>
+                  <div className="text-lg font-semibold">${money(customStats.faturado)}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Comissão City Tour</div>
+                  <div className="text-lg font-semibold">${money(customStats.comissao)}</div>
+                </div>
+                <div className="border border-slate-200 rounded p-3 text-center">
+                  <div className="text-xs text-slate-500">Tips</div>
+                  <div className="text-lg font-semibold">${money(customStats.tips)}</div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">Escolha as duas datas para ver os totais desse período.</p>
+            )}
+          </div>
+
           <div className="bg-white rounded-lg border border-slate-200 p-4 overflow-x-auto">
             <h2 className="text-sm font-semibold mb-3">Resumo por mês</h2>
             <table className="w-full text-xs">

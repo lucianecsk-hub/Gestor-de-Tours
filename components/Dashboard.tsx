@@ -76,16 +76,16 @@ function computeEntry(e: Entry, settings: Settings) {
   return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
 }
 
-function Field({label, children}: {label: string, children: React.ReactNode}) {
+function Field({label, children, className}: {label: string, children: React.ReactNode, className?: string}) {
   return (
-    <label className="flex flex-col gap-1 text-xs text-slate-600">
+    <label className={`flex flex-col gap-1 text-xs text-slate-600 flex-1 min-w-[90px] ${className || ''}`}>
       <span className="font-medium">{label}</span>
       {children}
     </label>
   );
 }
 
-const inputCls = "border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400";
+const inputCls = "border border-slate-300 rounded px-3 py-2.5 text-base w-full focus:outline-none focus:ring-2 focus:ring-slate-400";
 
 export default function Dashboard() {
   const [session, setSession] = useState<any>(undefined);
@@ -271,22 +271,22 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-blue-50 text-slate-800">
-      <div className="no-print max-w-5xl mx-auto px-4 pt-6 pb-2">
-        <div className="flex justify-between items-start">
+      <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-2">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
-            <p className="text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
+            <p className="hidden sm:block text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
           </div>
-          <div className="text-right text-xs text-slate-500">
+          <div className="flex justify-between sm:block sm:text-right text-xs text-slate-500">
             <div>{session.user.email}</div>
-            <button onClick={() => supabase.auth.signOut()} className="underline hover:text-slate-800 mt-1">Sair</button>
+            <button onClick={() => supabase.auth.signOut()} className="underline hover:text-slate-800 sm:mt-1">Sair</button>
           </div>
         </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
-        <div className="flex gap-1 mt-4 bg-blue-100 rounded-lg p-1 w-fit">
+        <div className="grid grid-cols-4 sm:flex sm:gap-1 gap-1 mt-4 bg-blue-100 rounded-lg p-1 sm:w-fit">
           {TABS.map(([key,label]) => (
             <button key={key} onClick={()=>setTab(key)}
-              className={`px-4 py-1.5 text-sm font-medium rounded-md transition ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-200/60'}`}>
+              className={`px-2 sm:px-4 py-2 sm:py-1.5 text-xs sm:text-sm font-medium rounded-md transition text-center ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-200/60'}`}>
               {label}
             </button>
           ))}
@@ -294,7 +294,7 @@ export default function Dashboard() {
       </div>
 
       {tab === 'lancamentos' && (
-        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+        <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
@@ -304,34 +304,34 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Field label="Tour"><input className={inputCls} value={form.tour} onChange={e=>setForm({...form,tour:e.target.value})}/></Field>
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-3">
-                <Field label="Portugues"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
-                <Field label="Italiano"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
-                <Field label="Ingles"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
-                <Field label="Espanhol"><input type="number" maxLength={2} className={inputCls + " w-16"} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
+              <div className="flex gap-2">
+                <Field label="Português" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
+                <Field label="Italiano" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
+                <Field label="Inglês" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
+                <Field label="Espanhol" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
                 <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
                 <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Field label="Tip Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
                 <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <Field label="Pagamento Invoice ($)"><input type="number" className={inputCls} value={form.pagamentoInvoice} onChange={e=>setForm({...form,pagamentoInvoice:e.target.value})}/></Field>
               </div>
             </div>
@@ -341,7 +341,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-2 mt-2">
                 {MOODS.map(m => (
                   <button key={m} type="button" onClick={()=>toggleMood(m)}
-                    className={`px-3 py-1 rounded-full text-xs border transition ${form.moods.includes(m) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                    className={`px-3 py-2 rounded-full text-sm border transition ${form.moods.includes(m) ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
                     {m}
                   </button>
                 ))}
@@ -353,7 +353,7 @@ export default function Dashboard() {
               <div className="flex gap-1">
                 {[0,1,2,3,4,5].map(n => (
                   <button key={n} type="button" onClick={()=>setForm({...form,nota:String(n)})}
-                    className={`w-8 h-8 rounded text-sm border ${Number(form.nota)===n ? 'bg-amber-400 border-amber-500 text-white' : 'bg-white border-slate-300 text-slate-600'}`}>
+                    className={`w-10 h-10 rounded text-base border ${Number(form.nota)===n ? 'bg-amber-400 border-amber-500 text-white' : 'bg-white border-slate-300 text-slate-600'}`}>
                     {n}
                   </button>
                 ))}
@@ -365,7 +365,7 @@ export default function Dashboard() {
             </Field>
 
             <div className="mt-4 flex gap-2">
-              <button disabled={saving} onClick={saveEntry} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50">
+              <button disabled={saving} onClick={saveEntry} className="bg-slate-900 text-white text-sm font-medium px-4 py-3 rounded hover:bg-slate-700 disabled:opacity-50 w-full sm:w-auto">
                 {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Adicionar lançamento'}
               </button>
               {editingId && (
@@ -415,7 +415,7 @@ export default function Dashboard() {
       )}
 
       {tab === 'config' && (
-        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+        <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Comissão do City Tour</h2>
             <p className="text-xs text-slate-500 mb-3">Até o limite de tours vendidos, aplica uma taxa; acima disso, aplica outra taxa por tour.</p>
@@ -443,7 +443,7 @@ export default function Dashboard() {
       )}
 
       {tab === 'relatorios' && (
-        <div className="no-print max-w-5xl mx-auto px-4 py-4 space-y-6">
+        <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Relatório por período (escolha as datas)</h2>
             <div className="flex flex-wrap gap-3 items-end mb-4">
@@ -543,7 +543,7 @@ export default function Dashboard() {
       )}
 
       {tab === 'invoice' && (
-        <div className="max-w-5xl mx-auto px-4 py-4 space-y-4">
+        <div className="max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-4">
           <div className="no-print bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Gerar Invoice</h2>
             <div className="flex flex-wrap gap-3 items-end">

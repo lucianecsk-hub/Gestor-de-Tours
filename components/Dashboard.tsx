@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import Auth from '@/components/Auth';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
 
@@ -86,6 +88,7 @@ function Field({label, children}: {label: string, children: React.ReactNode}) {
 const inputCls = "border border-slate-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400";
 
 export default function Dashboard() {
+  const [session, setSession] = useState<any>(undefined);
   const [tab, setTab] = useState('lancamentos');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
@@ -98,47 +101,53 @@ export default function Dashboard() {
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
 
   useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!session) return;
     (async () => {
+      setLoaded(false);
       try {
         const [entriesRes, settingsRes] = await Promise.all([
-          fetch('/api/entries'), fetch('/api/settings')
+          supabase.from('entries').select('id, data').eq('user_id', session.user.id),
+          supabase.from('settings').select('data').eq('user_id', session.user.id).maybeSingle(),
         ]);
-        const entriesJson = await entriesRes.json();
-        const settingsJson = await settingsRes.json();
-        if (entriesJson.entries) setEntries(entriesJson.entries);
-        if (settingsJson.settings) setSettings({...DEFAULT_SETTINGS, ...settingsJson.settings});
+        if (entriesRes.error) throw entriesRes.error;
+        if (settingsRes.error) throw settingsRes.error;
+        setEntries((entriesRes.data || []).map((r: any) => ({ id: r.id, ...r.data })));
+        if (settingsRes.data?.data) setSettings({ ...DEFAULT_SETTINGS, ...settingsRes.data.data });
       } catch (err: any) {
-        setErrorMsg('Não foi possível carregar os dados. Verifique a conexão com o banco.');
+        setErrorMsg('Não foi possível carregar os dados: ' + err.message);
       } finally {
         setLoaded(true);
       }
     })();
-  }, []);
+  }, [session]);
 
   const sorted = useMemo(() => [...entries].sort((a,b)=>a.data.localeCompare(b.data)), [entries]);
 
   async function saveEntry() {
+    if (!session) return;
     setSaving(true);
     setErrorMsg(null);
     try {
       if (editingId) {
-        const res = await fetch(`/api/entries/${editingId}`, {
-          method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify(form)
-        });
-        if (!res.ok) throw new Error('Falha ao salvar');
+        const { error } = await supabase.from('entries').update({ data: form }).eq('id', editingId).eq('user_id', session.user.id);
+        if (error) throw error;
         setEntries(entries.map(e => e.id === editingId ? form : e));
       } else {
         const newEntry = {...form, id: crypto.randomUUID()};
-        const res = await fetch('/api/entries', {
-          method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(newEntry)
-        });
-        if (!res.ok) throw new Error('Falha ao salvar');
+        const { error } = await supabase.from('entries').insert({ id: newEntry.id, user_id: session.user.id, data: newEntry });
+        if (error) throw error;
         setEntries([...entries, newEntry]);
       }
       setForm(emptyEntry());
       setEditingId(null);
     } catch (err: any) {
-      setErrorMsg('Não foi possível salvar. Tente novamente.');
+      setErrorMsg('Não foi possível salvar: ' + err.message);
     } finally {
       setSaving(false);
     }
@@ -147,11 +156,13 @@ export default function Dashboard() {
   function editEntry(e: Entry) { setForm(e); setEditingId(e.id); setTab('lancamentos'); }
 
   async function removeEntry(id: string) {
+    if (!session) return;
     try {
-      await fetch(`/api/entries/${id}`, { method: 'DELETE' });
+      const { error } = await supabase.from('entries').delete().eq('id', id).eq('user_id', session.user.id);
+      if (error) throw error;
       setEntries(entries.filter(e=>e.id!==id));
-    } catch (err) {
-      setErrorMsg('Não foi possível excluir. Tente novamente.');
+    } catch (err: any) {
+      setErrorMsg('Não foi possível excluir: ' + err.message);
     }
   }
 
@@ -160,13 +171,13 @@ export default function Dashboard() {
   }
 
   async function persistSettings(next: Settings) {
+    if (!session) return;
     setSettings(next);
     try {
-      await fetch('/api/settings', {
-        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(next)
-      });
-    } catch (err) {
-      setErrorMsg('Não foi possível salvar as configurações.');
+      const { error } = await supabase.from('settings').upsert({ user_id: session.user.id, data: next });
+      if (error) throw error;
+    } catch (err: any) {
+      setErrorMsg('Não foi possível salvar as configurações: ' + err.message);
     }
   }
 
@@ -222,15 +233,31 @@ export default function Dashboard() {
     ['config','Configurações'],
   ];
 
-  if (!loaded) {
+  if (session === undefined) {
     return <div className="max-w-5xl mx-auto px-4 py-10 text-sm text-slate-500">Carregando...</div>;
+  }
+
+  if (!session) {
+    return <Auth onAuthed={() => {}} />;
+  }
+
+  if (!loaded) {
+    return <div className="max-w-5xl mx-auto px-4 py-10 text-sm text-slate-500">Carregando seus dados...</div>;
   }
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <div className="no-print max-w-5xl mx-auto px-4 pt-6 pb-2">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
-        <p className="text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
+            <p className="text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+          </div>
+          <div className="text-right text-xs text-slate-500">
+            <div>{session.user.email}</div>
+            <button onClick={() => supabase.auth.signOut()} className="underline hover:text-slate-800 mt-1">Sair</button>
+          </div>
+        </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
         <div className="flex gap-1 mt-4 border-b border-slate-200">
           {TABS.map(([key,label]) => (

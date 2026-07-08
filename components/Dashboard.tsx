@@ -343,11 +343,23 @@ export default function Dashboard() {
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <Field label="Português"><input type="number" className={inputCls} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
-                <Field label="Italiano"><input type="number" className={inputCls} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
-                <Field label="Inglês"><input type="number" className={inputCls} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
-                <Field label="Espanhol"><input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
+              <div className="grid grid-cols-4 gap-2">
+                <label className="flex flex-col gap-1 text-xs text-slate-600 min-w-0">
+                  <span className="font-medium truncate">Português</span>
+                  <input type="number" className={inputCls} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/>
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-slate-600 min-w-0">
+                  <span className="font-medium truncate">Italiano</span>
+                  <input type="number" className={inputCls} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/>
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-slate-600 min-w-0">
+                  <span className="font-medium truncate">Inglês</span>
+                  <input type="number" className={inputCls} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/>
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-slate-600 min-w-0">
+                  <span className="font-medium truncate">Espanhol</span>
+                  <input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/>
+                </label>
               </div>
 
               <div className="flex flex-wrap gap-3">

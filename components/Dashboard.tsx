@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS = {
   cityTourLimite: 14,
   cityTourTaxaAte: 10,
   cityTourTaxaDepois: 15,
+  heliTaxa: 20,
 };
 
 type Entry = {
@@ -46,7 +47,7 @@ function emptyEntry(): Entry {
     valorTour: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
     cityQtd: '', cityQtdTotal: '', cityPreco: '',
-    heliQtd: '', heliPreco: '',
+    heliQtd: '', heliPreco: '20',
     tipPax: '', tipGas: '',
     pagamentoInvoice: '',
     moods: [],
@@ -152,6 +153,12 @@ export default function Dashboard() {
     setForm(f => ({ ...f, cityQtdTotal: String(quinzenaTotal), cityPreco: String(taxa) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quinzenaTotal, settings.cityTourLimite, settings.cityTourTaxaAte, settings.cityTourTaxaDepois]);
+
+  useEffect(() => {
+    if (num(form.heliQtd) <= 0) return;
+    setForm(f => ({ ...f, heliPreco: String(settings.heliTaxa) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.heliQtd, settings.heliTaxa]);
 
   async function saveEntry() {
     if (!session) return;
@@ -452,6 +459,14 @@ export default function Dashboard() {
               <Field label="Limite (ex: 14)"><input type="number" className={inputCls} value={settings.cityTourLimite} onChange={e=>persistSettings({...settings,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
               <Field label="Taxa até o limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaAte} onChange={e=>persistSettings({...settings,cityTourTaxaAte:parseInt(e.target.value)||0})}/></Field>
               <Field label="Taxa acima do limite ($/tour, vale para todos)"><input type="number" className={inputCls} value={settings.cityTourTaxaDepois} onChange={e=>persistSettings({...settings,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Comissão do Helicóptero</h2>
+            <p className="text-xs text-slate-500 mb-3">Valor fixo por venda, preenchido automaticamente ao lançar a quantidade.</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Taxa por venda ($)"><input type="number" className={inputCls} value={settings.heliTaxa} onChange={e=>persistSettings({...settings,heliTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 

@@ -336,11 +336,11 @@ export default function Dashboard() {
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
               </div>
 
-              <div className="flex gap-2">
-                <Field label="Português" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
-                <Field label="Italiano" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
-                <Field label="Inglês" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
-                <Field label="Espanhol" className="flex-none min-w-0 w-[22%]"><input type="number" className={inputCls + " text-center px-1"} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
+              <div className="flex flex-wrap gap-3">
+                <Field label="Português"><input type="number" className={inputCls} value={form.portugues} onChange={e=>setForm({...form,portugues:e.target.value})}/></Field>
+                <Field label="Italiano"><input type="number" className={inputCls} value={form.italiano} onChange={e=>setForm({...form,italiano:e.target.value})}/></Field>
+                <Field label="Inglês"><input type="number" className={inputCls} value={form.ingles} onChange={e=>setForm({...form,ingles:e.target.value})}/></Field>
+                <Field label="Espanhol"><input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/></Field>
               </div>
 
               <div className="flex flex-wrap gap-3">

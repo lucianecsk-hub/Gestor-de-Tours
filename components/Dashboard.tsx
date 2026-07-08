@@ -16,9 +16,9 @@ const DEFAULT_SETTINGS = {
   clienteEndereco: '2566 LA CARA AVE',
   clienteCidade: 'LAS VEGAS, NV, 89121',
   proximoInvoiceNum: 51,
-  cityTourLimite: 15,
-  cityTourTaxaAte: 15,
-  cityTourTaxaDepois: 20,
+  cityTourLimite: 14,
+  cityTourTaxaAte: 10,
+  cityTourTaxaDepois: 15,
 };
 
 type Entry = {
@@ -27,7 +27,7 @@ type Entry = {
   tour: string;
   valorTour: string;
   espanhol: string; portugues: string; italiano: string; ingles: string;
-  cityQtd: string; cityPreco: string;
+  cityQtd: string; cityQtdTotal: string; cityPreco: string;
   heliQtd: string; heliPreco: string;
   tipPax: string; tipGas: string;
   pagamentoInvoice: string;
@@ -45,7 +45,7 @@ function emptyEntry(): Entry {
     tour: 'GCW',
     valorTour: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
-    cityQtd: '', cityPreco: '',
+    cityQtd: '', cityQtdTotal: '', cityPreco: '',
     heliQtd: '', heliPreco: '',
     tipPax: '', tipGas: '',
     pagamentoInvoice: '',
@@ -67,12 +67,12 @@ function computeEntry(e: Entry, settings: Settings) {
   const pagamentoTotal = num(e.pagamentoInvoice) + vendasTotal;
 
   const qtd = num(e.cityQtd);
+  const qtdTotal = num(e.cityQtdTotal || e.cityQtd);
   const limite = num(settings.cityTourLimite);
   const taxaAte = num(settings.cityTourTaxaAte);
   const taxaDepois = num(settings.cityTourTaxaDepois);
-  let comissaoCity = 0;
-  if (qtd <= limite) comissaoCity = qtd * taxaAte;
-  else comissaoCity = limite * taxaAte + (qtd - limite) * taxaDepois;
+  const taxaAplicada = qtdTotal <= limite ? taxaAte : taxaDepois;
+  const comissaoCity = qtd * taxaAplicada;
 
   return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
 }
@@ -323,6 +323,7 @@ export default function Dashboard() {
 
               <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
+                <Field label="City Tour - Quantidade Total"><input type="number" className={inputCls} value={form.cityQtdTotal} onChange={e=>setForm({...form,cityQtdTotal:e.target.value})}/></Field>
                 <Field label="City Tour - Preço unit ($)"><input type="number" className={inputCls} value={form.cityPreco} onChange={e=>setForm({...form,cityPreco:e.target.value})}/></Field>
               </div>
 
@@ -423,11 +424,11 @@ export default function Dashboard() {
         <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Comissão do City Tour</h2>
-            <p className="text-xs text-slate-500 mb-3">Até o limite de tours vendidos, aplica uma taxa; acima disso, aplica outra taxa por tour.</p>
+            <p className="text-xs text-slate-500 mb-3">Se a "Quantidade Total" vendida no período for até o limite, todos os city tours valem a taxa menor. Se passar do limite, TODOS passam a valer a taxa maior.</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Limite de tours (ex: 15)"><input type="number" className={inputCls} value={settings.cityTourLimite} onChange={e=>persistSettings({...settings,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Limite (ex: 14)"><input type="number" className={inputCls} value={settings.cityTourLimite} onChange={e=>persistSettings({...settings,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
               <Field label="Taxa até o limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaAte} onChange={e=>persistSettings({...settings,cityTourTaxaAte:parseInt(e.target.value)||0})}/></Field>
-              <Field label="Taxa acima do limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaDepois} onChange={e=>persistSettings({...settings,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa acima do limite ($/tour, vale para todos)"><input type="number" className={inputCls} value={settings.cityTourTaxaDepois} onChange={e=>persistSettings({...settings,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 

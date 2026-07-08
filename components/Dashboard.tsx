@@ -297,7 +297,7 @@ export default function Dashboard() {
         <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wide">{editingId ? 'Editar lançamento' : 'Novo lançamento'}</h2>
               <div className="w-40">
                 <input type="date" className={inputCls + " w-full"} value={form.data} onChange={e=>setForm({...form,data:e.target.value})}/>
               </div>

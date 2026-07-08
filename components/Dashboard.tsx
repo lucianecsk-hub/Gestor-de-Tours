@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Auth from '@/components/Auth';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
+const TOUR_OPTIONS = ['GCW', 'DV', 'DV + 51', 'DV + STARS', 'VOF', 'MT CHARLESTON', 'ANTILOPE'];
 
 const DEFAULT_SETTINGS = {
   guiaNome: 'Daniel Kochinski',
@@ -304,8 +305,19 @@ export default function Dashboard() {
             </div>
 
             <div className="flex flex-col gap-3">
+              <div>
+                <span className="text-xs font-medium text-slate-600">Tour</span>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {TOUR_OPTIONS.map(t => (
+                    <button key={t} type="button" onClick={()=>setForm({...form, tour: t})}
+                      className={`px-3 py-2 rounded-full text-sm border transition ${form.tour === t ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300 hover:border-slate-400'}`}>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="flex flex-wrap gap-3">
-                <Field label="Tour"><input className={inputCls} value={form.tour} onChange={e=>setForm({...form,tour:e.target.value})}/></Field>
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
               </div>
 

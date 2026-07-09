@@ -105,6 +105,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
+  const [invoiceDataEmissao, setInvoiceDataEmissao] = useState(() => new Date().toISOString().slice(0,10));
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
   const [customRange, setCustomRange] = useState({start:'', end:''});
 
@@ -330,6 +331,7 @@ export default function Dashboard() {
     await persistSettings(next);
     setInvoiceNum(null);
     setInvoiceRange({start:'', end:''});
+    setInvoiceDataEmissao(new Date().toISOString().slice(0,10));
   }
 
   const TABS: [string,string][] = [
@@ -665,6 +667,7 @@ export default function Dashboard() {
             <div className="flex flex-wrap gap-3 items-end">
               <Field label="De"><input type="date" className={inputCls} value={invoiceRange.start} onChange={e=>setInvoiceRange({...invoiceRange,start:e.target.value})}/></Field>
               <Field label="Até"><input type="date" className={inputCls} value={invoiceRange.end} onChange={e=>setInvoiceRange({...invoiceRange,end:e.target.value})}/></Field>
+              <Field label="Data de Emissão"><input type="date" className={inputCls} value={invoiceDataEmissao} onChange={e=>setInvoiceDataEmissao(e.target.value)}/></Field>
               <button onClick={startInvoice} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700">Gerar prévia</button>
               {invoiceNum && (
                 <>
@@ -684,7 +687,7 @@ export default function Dashboard() {
                 </div>
                 <div className="text-right text-xs">
                   <div className="font-semibold">DATE OF ISSUE</div>
-                  <div>{new Date().toLocaleDateString('en-US')}</div>
+                  <div>{invoiceDataEmissao.slice(5,7)}/{invoiceDataEmissao.slice(8,10)}/{invoiceDataEmissao.slice(0,4)}</div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-6 mb-6 text-xs">

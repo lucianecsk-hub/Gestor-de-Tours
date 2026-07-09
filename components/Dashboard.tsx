@@ -20,6 +20,7 @@ const DEFAULT_SETTINGS = {
   cityTourTaxaAte: 10,
   cityTourTaxaDepois: 15,
   heliTaxa: 20,
+  pgtoExtraPaxTaxa: 10,
 };
 
 type Entry = {
@@ -167,6 +168,12 @@ export default function Dashboard() {
     setForm(f => ({ ...f, heliPreco: String(settings.heliTaxa) }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.heliQtd, settings.heliTaxa]);
+
+  useEffect(() => {
+    if (num(form.portugues) <= 0) return;
+    setForm(f => ({ ...f, pgtoExtraPax: String(settings.pgtoExtraPaxTaxa) }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.portugues, settings.pgtoExtraPaxTaxa]);
 
   useEffect(() => {
     const cityTotal = num(form.cityQtd) * num(form.cityPreco);
@@ -531,7 +538,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-3">
                 <Field label="Pgto Extra por Pax - Brasileiros ($)"><input type="number" className={inputCls} value={form.pgtoExtraPax} onChange={e=>setForm({...form,pgtoExtraPax:e.target.value})}/></Field>
               </div>
-              <p className="text-xs text-slate-400 -mt-2">Acordo especial de alguns tours. Fica $0 por padrão; se preenchido, multiplica pelo nº de brasileiros (Português) e entra no Pagamento Invoice e na invoice.</p>
+              <p className="text-xs text-slate-400 -mt-2">Preenchido automaticamente: $10 por pax brasileiro (Português). Pode editar se precisar. Multiplica pelo nº de brasileiros e entra no Pagamento Invoice e na invoice.</p>
 
               <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
@@ -670,6 +677,14 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500 mb-3">Valor fixo por venda, preenchido automaticamente ao lançar a quantidade.</p>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Taxa por venda ($)"><input type="number" className={inputCls} value={settings.heliTaxa} onChange={e=>persistSettings({...settings,heliTaxa:parseInt(e.target.value)||0})}/></Field>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Pgto Extra por Pax (Brasileiros)</h2>
+            <p className="text-xs text-slate-500 mb-3">Valor fixo por pax brasileiro, preenchido automaticamente ao lançar a quantidade (mesma lógica do City Tour).</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Taxa por pax ($)"><input type="number" className={inputCls} value={settings.pgtoExtraPaxTaxa} onChange={e=>persistSettings({...settings,pgtoExtraPaxTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 

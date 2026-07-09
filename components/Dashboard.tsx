@@ -682,11 +682,11 @@ export default function Dashboard() {
             <div className="print-area bg-white rounded-lg border border-slate-200 p-8 text-sm">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <div className="text-lg font-bold tracking-wide">INVOICE</div>
+                  <div className="text-lg font-bold tracking-wide">FACTURA</div>
                   <div>{invoiceNum}/{new Date().getFullYear()}</div>
                 </div>
                 <div className="text-right text-xs">
-                  <div className="font-semibold">DATE OF ISSUE</div>
+                  <div className="font-semibold">FECHA DE EMISIÓN</div>
                   <div>{invoiceDataEmissao.slice(5,7)}/{invoiceDataEmissao.slice(8,10)}/{invoiceDataEmissao.slice(0,4)}</div>
                 </div>
               </div>
@@ -698,7 +698,7 @@ export default function Dashboard() {
                   <div>{settings.guiaTelefone}</div>
                 </div>
                 <div>
-                  <div className="font-semibold">BILLED TO</div>
+                  <div className="font-semibold">FACTURAR A</div>
                   <div>{settings.clienteNome}</div>
                   <div>{settings.clienteEndereco}</div>
                   <div>{settings.clienteCidade}</div>
@@ -707,10 +707,10 @@ export default function Dashboard() {
               <table className="w-full text-xs border-t border-slate-300">
                 <thead>
                   <tr className="border-b border-slate-300">
-                    <th className="text-left py-1">Days</th>
-                    <th className="text-left py-1">Service Description</th>
-                    <th className="text-right py-1">Unit Cost</th>
-                    <th className="text-right py-1">Total Amount</th>
+                    <th className="text-left py-1">Días</th>
+                    <th className="text-left py-1">Descripción del Servicio</th>
+                    <th className="text-right py-1">Costo Unitario</th>
+                    <th className="text-right py-1">Monto Total</th>
                     <th className="text-right py-1">Pax</th>
                   </tr>
                 </thead>
@@ -720,17 +720,17 @@ export default function Dashboard() {
                     const dataFmt = e.data.slice(5,7)+'/'+e.data.slice(8,10)+'/'+e.data.slice(2,4);
                     return (
                       <React.Fragment key={e.id}>
-                        <tr>
-                          <td className="py-1 align-top">{i+1}</td>
-                          <td className="py-1 align-top">{dataFmt}: {e.tour}</td>
-                          <td className="py-1 text-right align-top">{money(num(e.valorTour))}</td>
-                          <td className="py-1 text-right align-top">{money(num(e.valorTour))}</td>
-                          <td className="py-1 text-right align-top">{c.clientesTotal}</td>
+                        <tr className="border-t border-slate-200">
+                          <td className="py-1.5 align-top">{i+1}</td>
+                          <td className="py-1.5 align-top">{dataFmt}: {e.tour}</td>
+                          <td className="py-1.5 text-right align-top">{money(num(e.valorTour))}</td>
+                          <td className="py-1.5 text-right align-top">{money(num(e.valorTour))}</td>
+                          <td className="py-1.5 text-right align-top">{c.clientesTotal}</td>
                         </tr>
                         {num(e.cityQtd) > 0 && (
                           <tr className="text-slate-500">
                             <td></td>
-                            <td className="py-1">{dataFmt}: Comissão {e.cityQtd} City Tour</td>
+                            <td className="py-1">{dataFmt}: Comisión {e.cityQtd} City Tour</td>
                             <td className="py-1 text-right">{money(c.comissaoCity)}</td>
                             <td className="py-1 text-right">{money(c.comissaoCity)}</td>
                             <td></td>
@@ -739,7 +739,7 @@ export default function Dashboard() {
                         {num(e.heliQtd) > 0 && (
                           <tr className="text-slate-500">
                             <td></td>
-                            <td className="py-1">{dataFmt}: Comissão {e.heliQtd} Helicóptero</td>
+                            <td className="py-1">{dataFmt}: Comisión {e.heliQtd} Helicóptero</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
                             <td></td>
@@ -751,7 +751,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
               <div className="flex justify-end mt-4 border-t border-slate-300 pt-2">
-                <div className="text-sm font-semibold">Invoice Total: ${money(invoiceTotal)}</div>
+                <div className="text-sm font-semibold">Total de la Factura: ${money(invoiceTotal)}</div>
               </div>
               {invoiceEntries.length===0 && <div className="text-center text-slate-400 py-6">Selecione um período com lançamentos.</div>}
             </div>

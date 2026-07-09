@@ -21,6 +21,7 @@ const DEFAULT_SETTINGS = {
   cityTourTaxaDepois: 15,
   heliTaxa: 20,
   pgtoExtraPaxTaxa: 10,
+  comissaoGasTaxa: 40,
 };
 
 type Entry = {
@@ -42,7 +43,7 @@ type Entry = {
 
 type Settings = typeof DEFAULT_SETTINGS;
 
-function emptyEntry(): Entry {
+function emptyEntry(gasDefault: string = '40'): Entry {
   return {
     id: crypto.randomUUID(),
     data: new Date().toISOString().slice(0,10),
@@ -52,7 +53,7 @@ function emptyEntry(): Entry {
     pgtoExtraPax: '0',
     cityQtd: '', cityQtdTotal: '', cityPreco: '',
     heliQtd: '', heliPreco: '20',
-    tipPax: '', tipGas: '',
+    tipPax: '', tipGas: gasDefault,
     pagamentoInvoice: '',
     moods: [],
     nota: '',
@@ -105,7 +106,7 @@ export default function Dashboard() {
   const [tab, setTab] = useState('lancamentos');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [form, setForm] = useState<Entry>(emptyEntry());
+  const [form, setForm] = useState<Entry>(emptyEntry(String(DEFAULT_SETTINGS.comissaoGasTaxa)));
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -240,7 +241,7 @@ export default function Dashboard() {
         }
       }
       setEntries(result);
-      setForm(emptyEntry());
+      setForm(emptyEntry(String(settings.comissaoGasTaxa)));
       setEditingId(null);
     } catch (err: any) {
       setErrorMsg('Não foi possível salvar: ' + err.message);
@@ -610,7 +611,7 @@ export default function Dashboard() {
                 {saving ? 'Salvando...' : editingId ? 'Salvar alterações' : 'Adicionar lançamento'}
               </button>
               {editingId && (
-                <button onClick={()=>{setForm(emptyEntry());setEditingId(null);}} className="text-sm px-4 py-2 rounded border border-slate-300">Cancelar</button>
+                <button onClick={()=>{setForm(emptyEntry(String(settings.comissaoGasTaxa)));setEditingId(null);}} className="text-sm px-4 py-2 rounded border border-slate-300">Cancelar</button>
               )}
             </div>
           </div>
@@ -685,6 +686,14 @@ export default function Dashboard() {
             <p className="text-xs text-slate-500 mb-3">Valor fixo por pax brasileiro, preenchido automaticamente ao lançar a quantidade (mesma lógica do City Tour).</p>
             <div className="grid grid-cols-3 gap-3">
               <Field label="Taxa por pax ($)"><input type="number" className={inputCls} value={settings.pgtoExtraPaxTaxa} onChange={e=>persistSettings({...settings,pgtoExtraPaxTaxa:parseInt(e.target.value)||0})}/></Field>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Comissão Gas</h2>
+            <p className="text-xs text-slate-500 mb-3">Valor padrão que já vem preenchido em cada novo lançamento. Pode alterar quando necessário.</p>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="Valor padrão ($)"><input type="number" className={inputCls} value={settings.comissaoGasTaxa} onChange={e=>persistSettings({...settings,comissaoGasTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 

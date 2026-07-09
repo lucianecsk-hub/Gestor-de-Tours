@@ -255,6 +255,83 @@ export default function Dashboard() {
     setForm(f => ({...f, moods: f.moods.includes(m) ? f.moods.filter(x=>x!==m) : [...f.moods, m]}));
   }
 
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
+  const [importDone, setImportDone] = useState<number | null>(null);
+
+  function parseCsv(text: string): any[] {
+    const rows: string[][] = [];
+    let cur: string[] = [];
+    let field = '';
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i+1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += ch;
+      } else {
+        if (ch === '"') inQuotes = true;
+        else if (ch === ',') { cur.push(field); field = ''; }
+        else if (ch === '\n' || ch === '\r') {
+          if (ch === '\r' && text[i+1] === '\n') i++;
+          cur.push(field); field = '';
+          if (cur.length > 1 || cur[0] !== '') rows.push(cur);
+          cur = [];
+        } else field += ch;
+      }
+    }
+    if (field !== '' || cur.length) { cur.push(field); rows.push(cur); }
+    if (!rows.length) return [];
+    const headers = rows[0].map(h => h.trim());
+    return rows.slice(1).filter(r => r.some(c => c !== '')).map(r => {
+      const obj: any = {};
+      headers.forEach((h, idx) => obj[h] = (r[idx] ?? '').trim());
+      return obj;
+    });
+  }
+
+  function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      setImportPreview(parseCsv(text));
+      setImportDone(null);
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  async function runImport() {
+    if (!session || importPreview.length === 0) return;
+    setImporting(true);
+    setImportDone(null);
+    try {
+      const toInsert = importPreview.map(row => ({ ...emptyEntry(), ...row, id: crypto.randomUUID(), moods: [] }));
+      const CHUNK = 200;
+      let inserted = 0;
+      for (let i = 0; i < toInsert.length; i += CHUNK) {
+        const chunk = toInsert.slice(i, i + CHUNK);
+        const payload = chunk.map(e => ({ id: e.id, user_id: session.user.id, data: e }));
+        const { error } = await supabase.from('entries').insert(payload);
+        if (error) throw error;
+        inserted += chunk.length;
+        setImportProgress(`${inserted}/${toInsert.length}`);
+      }
+      const entriesRes = await supabase.from('entries').select('id, data').eq('user_id', session.user.id);
+      if (entriesRes.data) setEntries(entriesRes.data.map((r: any) => ({ id: r.id, ...r.data })));
+      setImportDone(inserted);
+      setImportPreview([]);
+    } catch (err: any) {
+      setErrorMsg('Erro ao importar: ' + err.message);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function persistSettings(next: Settings) {
     if (!session) return;
     setSettings(next);
@@ -566,6 +643,35 @@ export default function Dashboard() {
               <Field label="Cliente - cidade/estado/CEP"><input className={inputCls} value={settings.clienteCidade} onChange={e=>persistSettings({...settings,clienteCidade:e.target.value})}/></Field>
               <Field label="Próximo número de invoice"><input type="number" className={inputCls} value={settings.proximoInvoiceNum} onChange={e=>persistSettings({...settings,proximoInvoiceNum:parseInt(e.target.value)||0})}/></Field>
             </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Importar lançamentos em massa (CSV)</h2>
+            <p className="text-xs text-slate-500 mb-3">
+              Envie um arquivo CSV com as colunas: data, tour, valorTour, espanhol, portugues, italiano, ingles,
+              cityQtd, cityPreco, cityQtdTotal, heliQtd, heliPreco, tipPax, tipGas, pagamentoInvoice, obs.
+              Útil para cadastrar de uma vez lançamentos antigos.
+            </p>
+            <input type="file" accept=".csv" onChange={handleCsvFile} className="text-xs" />
+            {importPreview.length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs text-slate-600 mb-2">{importPreview.length} lançamentos prontos para importar (mostrando os 5 primeiros):</p>
+                <div className="overflow-x-auto">
+                  <table className="text-xs border border-slate-200">
+                    <thead className="bg-slate-100"><tr>{Object.keys(importPreview[0]).map(k => <th key={k} className="p-1 text-left">{k}</th>)}</tr></thead>
+                    <tbody>
+                      {importPreview.slice(0,5).map((r,i) => (
+                        <tr key={i} className="border-t border-slate-100">{Object.values(r).map((v,j) => <td key={j} className="p-1">{String(v)}</td>)}</tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <button disabled={importing} onClick={runImport} className="mt-3 bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700 disabled:opacity-50">
+                  {importing ? `Importando... ${importProgress}` : `Importar ${importPreview.length} lançamentos`}
+                </button>
+              </div>
+            )}
+            {importDone !== null && <p className="text-xs text-emerald-700 mt-2">{importDone} lançamentos importados com sucesso!</p>}
           </div>
         </div>
       )}

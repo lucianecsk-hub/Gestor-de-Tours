@@ -107,6 +107,7 @@ export default function Dashboard() {
   const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
   const [invoiceDataEmissao, setInvoiceDataEmissao] = useState(() => new Date().toISOString().slice(0,10));
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
+  const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
   const [customRange, setCustomRange] = useState({start:'', end:''});
 
   useEffect(() => {
@@ -325,9 +326,14 @@ export default function Dashboard() {
     return s + c.vendasTotal;
   }, 0), [invoiceEntries, settings]);
 
-  function startInvoice() { setInvoiceNum(settings.proximoInvoiceNum); }
+  useEffect(() => {
+    if (loaded && invoiceNum === null) setInvoiceNumInput(settings.proximoInvoiceNum);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, settings.proximoInvoiceNum]);
+
+  function startInvoice() { setInvoiceNum(invoiceNumInput); }
   async function finalizeInvoice() {
-    const next = {...settings, proximoInvoiceNum: settings.proximoInvoiceNum + 1};
+    const next = {...settings, proximoInvoiceNum: (invoiceNum ?? settings.proximoInvoiceNum) + 1};
     await persistSettings(next);
     setInvoiceNum(null);
     setInvoiceRange({start:'', end:''});
@@ -668,6 +674,7 @@ export default function Dashboard() {
               <Field label="De"><input type="date" className={inputCls} value={invoiceRange.start} onChange={e=>setInvoiceRange({...invoiceRange,start:e.target.value})}/></Field>
               <Field label="Até"><input type="date" className={inputCls} value={invoiceRange.end} onChange={e=>setInvoiceRange({...invoiceRange,end:e.target.value})}/></Field>
               <Field label="Data de Emissão"><input type="date" className={inputCls} value={invoiceDataEmissao} onChange={e=>setInvoiceDataEmissao(e.target.value)}/></Field>
+              <Field label="Nº da Invoice / Ciclo"><input type="number" className={inputCls + " w-24"} value={invoiceNumInput} onChange={e=>setInvoiceNumInput(parseInt(e.target.value)||0)}/></Field>
               <button onClick={startInvoice} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700">Gerar prévia</button>
               {invoiceNum && (
                 <>
@@ -676,17 +683,18 @@ export default function Dashboard() {
                 </>
               )}
             </div>
+            <p className="text-xs text-slate-400 mt-2">Digite o número/ciclo que essa invoice deve ter (ex: 1, 2, 3... para cadastrar invoices antigas na mão). Fica sugerido automaticamente o próximo número (51) para as novas.</p>
           </div>
 
           {invoiceNum && (
             <div className="print-area bg-white rounded-lg border border-slate-200 p-8 text-sm">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <div className="text-lg font-bold tracking-wide">FACTURA</div>
+                  <div className="text-lg font-bold tracking-wide">INVOICE</div>
                   <div>{invoiceNum}/{new Date().getFullYear()}</div>
                 </div>
                 <div className="text-right text-xs">
-                  <div className="font-semibold">FECHA DE EMISIÓN</div>
+                  <div className="font-semibold">DATE OF ISSUE</div>
                   <div>{invoiceDataEmissao.slice(5,7)}/{invoiceDataEmissao.slice(8,10)}/{invoiceDataEmissao.slice(0,4)}</div>
                 </div>
               </div>
@@ -698,7 +706,7 @@ export default function Dashboard() {
                   <div>{settings.guiaTelefone}</div>
                 </div>
                 <div>
-                  <div className="font-semibold">FACTURAR A</div>
+                  <div className="font-semibold">BILLED TO</div>
                   <div>{settings.clienteNome}</div>
                   <div>{settings.clienteEndereco}</div>
                   <div>{settings.clienteCidade}</div>
@@ -707,10 +715,10 @@ export default function Dashboard() {
               <table className="w-full text-xs border-t border-slate-300">
                 <thead>
                   <tr className="border-b border-slate-300">
-                    <th className="text-left py-1">Días</th>
-                    <th className="text-left py-1">Descripción del Servicio</th>
-                    <th className="text-right py-1">Costo Unitario</th>
-                    <th className="text-right py-1">Monto Total</th>
+                    <th className="text-left py-1">Days</th>
+                    <th className="text-left py-1">Service Description</th>
+                    <th className="text-right py-1">Unit Cost</th>
+                    <th className="text-right py-1">Total Amount</th>
                     <th className="text-right py-1">Pax</th>
                   </tr>
                 </thead>
@@ -730,7 +738,7 @@ export default function Dashboard() {
                         {num(e.cityQtd) > 0 && (
                           <tr className="text-slate-500">
                             <td></td>
-                            <td className="py-1">{dataFmt}: Comisión {e.cityQtd} City Tour</td>
+                            <td className="py-1">{dataFmt}: Comissão {e.cityQtd} City Tour</td>
                             <td className="py-1 text-right">{money(c.comissaoCity)}</td>
                             <td className="py-1 text-right">{money(c.comissaoCity)}</td>
                             <td></td>
@@ -739,7 +747,7 @@ export default function Dashboard() {
                         {num(e.heliQtd) > 0 && (
                           <tr className="text-slate-500">
                             <td></td>
-                            <td className="py-1">{dataFmt}: Comisión {e.heliQtd} Helicóptero</td>
+                            <td className="py-1">{dataFmt}: Comissão {e.heliQtd} Helicóptero</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
                             <td></td>
@@ -751,7 +759,7 @@ export default function Dashboard() {
                 </tbody>
               </table>
               <div className="flex justify-end mt-4 border-t border-slate-300 pt-2">
-                <div className="text-sm font-semibold">Total de la Factura: ${money(invoiceTotal)}</div>
+                <div className="text-sm font-semibold">Invoice Total: ${money(invoiceTotal)}</div>
               </div>
               {invoiceEntries.length===0 && <div className="text-center text-slate-400 py-6">Selecione um período com lançamentos.</div>}
             </div>

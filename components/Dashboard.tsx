@@ -272,7 +272,7 @@ export default function Dashboard() {
   }, [sorted, customRange]);
 
   const customStats = useMemo(() => {
-    const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, comissao:0, tips:0, heli:0 };
+    const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, cityQtdVendidos:0, tipClientes:0, comissaoGas:0, heli:0 };
     customEntries.forEach(e => {
       const c = computeEntry(e, settings);
       s.servicos += 1;
@@ -282,23 +282,24 @@ export default function Dashboard() {
       s.ingles += num(e.ingles);
       s.clientes += c.clientesTotal;
       s.faturado += c.vendasTotal;
-      s.comissao += c.comissaoCity;
-      s.tips += c.tipTotal;
+      s.cityQtdVendidos += num(e.cityQtd);
+      s.tipClientes += num(e.tipPax);
+      s.comissaoGas += num(e.tipGas);
       s.heli += num(e.heliQtd);
     });
     return s;
   }, [customEntries, settings]);
 
   const monthly = useMemo(() => {
-    const map: Record<string, {faturado:number, clientes:number, comissao:number, servicos:number, tips:number}> = {};
+    const map: Record<string, {invoice:number, clientes:number, tips:number, totalRecebido:number, servicos:number}> = {};
     sorted.forEach(e => {
       const key = e.data ? e.data.slice(0,7) : 'Sem data';
       const c = computeEntry(e, settings);
-      if (!map[key]) map[key] = {faturado:0, clientes:0, comissao:0, servicos:0, tips:0};
-      map[key].faturado += c.vendasTotal;
+      if (!map[key]) map[key] = {invoice:0, clientes:0, tips:0, totalRecebido:0, servicos:0};
+      map[key].invoice += num(e.pagamentoInvoice);
       map[key].clientes += c.clientesTotal;
-      map[key].comissao += c.comissaoCity;
-      map[key].tips += c.tipTotal;
+      map[key].tips += num(e.tipPax);
+      map[key].totalRecebido += c.pagamentoTotal;
       map[key].servicos += 1;
     });
     return Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0]));
@@ -435,7 +436,7 @@ export default function Dashboard() {
               </div>
 
               <div className="flex flex-wrap gap-3">
-                <Field label="Tip Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
+                <Field label="Comissão Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
                 <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
               </div>
 
@@ -451,7 +452,7 @@ export default function Dashboard() {
                   </div>
                 </Field>
               </div>
-              <p className="text-xs text-slate-400 -mt-2">Pagamento Invoice + Tip Gas + Tip Pax (calculado automaticamente).</p>
+              <p className="text-xs text-slate-400 -mt-2">Pagamento Invoice + Comissão Gas + Tip Pax (calculado automaticamente).</p>
             </div>
 
             <div className="mt-4">
@@ -575,47 +576,18 @@ export default function Dashboard() {
               <Field label="Até"><input type="date" className={inputCls} value={customRange.end} onChange={e=>setCustomRange({...customRange,end:e.target.value})}/></Field>
             </div>
             {customRange.start && customRange.end ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Serviços</div>
-                  <div className="text-lg font-semibold">{customStats.servicos}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Total de clientes</div>
-                  <div className="text-lg font-semibold">{customStats.clientes}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Espanhol</div>
-                  <div className="text-lg font-semibold">{customStats.espanhol}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Português</div>
-                  <div className="text-lg font-semibold">{customStats.portugues}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Italiano</div>
-                  <div className="text-lg font-semibold">{customStats.italiano}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Inglês</div>
-                  <div className="text-lg font-semibold">{customStats.ingles}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Helicóptero vendidos</div>
-                  <div className="text-lg font-semibold">{customStats.heli}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Faturado</div>
-                  <div className="text-lg font-semibold">${money(customStats.faturado)}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Comissão City Tour</div>
-                  <div className="text-lg font-semibold">${money(customStats.comissao)}</div>
-                </div>
-                <div className="border border-slate-200 rounded p-3 text-center">
-                  <div className="text-xs text-slate-500">Tips</div>
-                  <div className="text-lg font-semibold">${money(customStats.tips)}</div>
-                </div>
+              <div className="divide-y divide-slate-200">
+                <div className="flex justify-between py-2"><span className="text-slate-500">Serviços</span><span className="font-semibold">{customStats.servicos}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Total de clientes</span><span className="font-semibold">{customStats.clientes}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Espanhol</span><span className="font-semibold">{customStats.espanhol}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Português</span><span className="font-semibold">{customStats.portugues}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Italiano</span><span className="font-semibold">{customStats.italiano}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Inglês</span><span className="font-semibold">{customStats.ingles}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Helicóptero vendidos</span><span className="font-semibold">{customStats.heli}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">City Tours vendidos</span><span className="font-semibold">{customStats.cityQtdVendidos}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Faturado</span><span className="font-semibold">${money(customStats.faturado)}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Tip Clientes</span><span className="font-semibold">${money(customStats.tipClientes)}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Comissão Gas</span><span className="font-semibold">${money(customStats.comissaoGas)}</span></div>
               </div>
             ) : (
               <p className="text-xs text-slate-400">Escolha as duas datas para ver os totais desse período.</p>
@@ -630,9 +602,9 @@ export default function Dashboard() {
                   <th className="p-2 text-left">Mês</th>
                   <th className="p-2 text-right">Serviços</th>
                   <th className="p-2 text-right">Clientes</th>
-                  <th className="p-2 text-right">Faturado</th>
-                  <th className="p-2 text-right">Comissão City Tour</th>
+                  <th className="p-2 text-right">Invoice</th>
                   <th className="p-2 text-right">Tips</th>
+                  <th className="p-2 text-right">Total Recebido</th>
                 </tr>
               </thead>
               <tbody>
@@ -641,9 +613,9 @@ export default function Dashboard() {
                     <td className="p-2">{mes}</td>
                     <td className="p-2 text-right">{v.servicos}</td>
                     <td className="p-2 text-right">{v.clientes}</td>
-                    <td className="p-2 text-right">${money(v.faturado)}</td>
-                    <td className="p-2 text-right">${money(v.comissao)}</td>
+                    <td className="p-2 text-right">${money(v.invoice)}</td>
                     <td className="p-2 text-right">${money(v.tips)}</td>
+                    <td className="p-2 text-right font-semibold">${money(v.totalRecebido)}</td>
                   </tr>
                 ))}
                 {monthly.length===0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">Sem dados ainda.</td></tr>}

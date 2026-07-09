@@ -364,9 +364,12 @@ export default function Dashboard() {
     <div className="min-h-screen bg-blue-50 text-slate-800">
       <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-2">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-          <div>
-            <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
-            <p className="hidden sm:block text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="Gestor de Tours" className="h-9 w-9 sm:h-10 sm:w-10 object-contain" />
+            <div>
+              <h1 className="text-lg sm:text-xl font-semibold tracking-tight text-slate-900">Gestor de Tours & Invoices</h1>
+              <p className="hidden sm:block text-sm text-slate-500 mt-1">Lançamentos diários, comissão de city tour, humor do dia e geração de invoice.</p>
+            </div>
           </div>
           <div className="flex justify-between sm:block sm:text-right text-xs text-slate-500">
             <div>{session.user.email}</div>

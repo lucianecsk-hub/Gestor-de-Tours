@@ -28,6 +28,7 @@ type Entry = {
   tour: string;
   valorTour: string;
   espanhol: string; portugues: string; italiano: string; ingles: string;
+  pgtoExtraPax: string;
   cityQtd: string; cityQtdTotal: string; cityPreco: string;
   heliQtd: string; heliPreco: string;
   tipPax: string; tipGas: string;
@@ -46,6 +47,7 @@ function emptyEntry(): Entry {
     tour: 'GCW',
     valorTour: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
+    pgtoExtraPax: '0',
     cityQtd: '', cityQtdTotal: '', cityPreco: '',
     heliQtd: '', heliPreco: '20',
     tipPax: '', tipGas: '',
@@ -63,12 +65,13 @@ function computeEntry(e: Entry, settings: Settings) {
   const clientesTotal = num(e.espanhol)+num(e.portugues)+num(e.italiano)+num(e.ingles);
   const cityTotal = num(e.cityQtd) * num(e.cityPreco);
   const heliTotal = num(e.heliQtd) * num(e.heliPreco);
-  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal;
+  const pgtoExtraTotal = num(e.portugues) * num(e.pgtoExtraPax);
+  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal + pgtoExtraTotal;
   const tipTotal = num(e.tipPax) + num(e.tipGas);
   const pagamentoTotal = num(e.pagamentoInvoice) + tipTotal;
   const comissaoCity = cityTotal;
 
-  return { clientesTotal, cityTotal, heliTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
+  return { clientesTotal, cityTotal, heliTotal, pgtoExtraTotal, vendasTotal, tipTotal, pagamentoTotal, comissaoCity };
 }
 
 // Quinzena = ciclo de faturamento: dia 1-15 e dia 16-fim do mes
@@ -166,10 +169,11 @@ export default function Dashboard() {
   useEffect(() => {
     const cityTotal = num(form.cityQtd) * num(form.cityPreco);
     const heliTotal = num(form.heliQtd) * num(form.heliPreco);
-    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal;
+    const pgtoExtraTotal = num(form.portugues) * num(form.pgtoExtraPax);
+    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal + pgtoExtraTotal;
     setForm(f => ({ ...f, pagamentoInvoice: vendasTotal ? String(vendasTotal) : '' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco]);
+  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco, form.portugues, form.pgtoExtraPax]);
 
   async function recalcQuinzena(allEntries: Entry[], dateStr: string, userId: string): Promise<Entry[]> {
     if (!dateStr) return allEntries;
@@ -186,7 +190,8 @@ export default function Dashboard() {
       if (en.data >= start && en.data <= end && num(en.cityQtd) > 0 && (en.cityPreco !== rateStr || en.cityQtdTotal !== totalStr)) {
         const novoCityTotal = num(en.cityQtd) * rate;
         const heliTotal = num(en.heliQtd) * num(en.heliPreco);
-        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal;
+        const pgtoExtraTotal = num(en.portugues) * num(en.pgtoExtraPax);
+        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal + pgtoExtraTotal;
         const newEn = { ...en, cityPreco: rateStr, cityQtdTotal: totalStr, pagamentoInvoice: novoVendasTotal ? String(novoVendasTotal) : en.pagamentoInvoice };
         toPersist.push(newEn);
         return newEn;
@@ -502,6 +507,11 @@ export default function Dashboard() {
                   <input type="number" className={inputCls} value={form.espanhol} onChange={e=>setForm({...form,espanhol:e.target.value})}/>
                 </label>
               </div>
+
+              <div className="flex flex-wrap gap-3">
+                <Field label="Pgto Extra por Pax - Brasileiros ($)"><input type="number" className={inputCls} value={form.pgtoExtraPax} onChange={e=>setForm({...form,pgtoExtraPax:e.target.value})}/></Field>
+              </div>
+              <p className="text-xs text-slate-400 -mt-2">Acordo especial de alguns tours. Fica $0 por padrão; se preenchido, multiplica pelo nº de brasileiros (Português) e entra no Pagamento Invoice e na invoice.</p>
 
               <div className="flex flex-wrap gap-3">
                 <Field label="City Tour - Qtd vendida"><input type="number" className={inputCls} value={form.cityQtd} onChange={e=>setForm({...form,cityQtd:e.target.value})}/></Field>
@@ -831,6 +841,15 @@ export default function Dashboard() {
                             <td className="py-1">{dataFmt}: Comissão {e.heliQtd} Helicóptero</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
                             <td className="py-1 text-right">{money(c.heliTotal)}</td>
+                            <td></td>
+                          </tr>
+                        )}
+                        {c.pgtoExtraTotal > 0 && (
+                          <tr className="text-slate-500">
+                            <td></td>
+                            <td className="py-1">{dataFmt}: Extra Pax {e.portugues} Brasileiros</td>
+                            <td className="py-1 text-right">{money(c.pgtoExtraTotal)}</td>
+                            <td className="py-1 text-right">{money(c.pgtoExtraTotal)}</td>
                             <td></td>
                           </tr>
                         )}

@@ -36,6 +36,7 @@ type Entry = {
   moods: string[];
   nota: string;
   obs: string;
+  revisado: boolean;
 };
 
 type Settings = typeof DEFAULT_SETTINGS;
@@ -55,6 +56,7 @@ function emptyEntry(): Entry {
     moods: [],
     nota: '',
     obs: '',
+    revisado: false,
   };
 }
 
@@ -258,6 +260,19 @@ export default function Dashboard() {
       setEntries(result);
     } catch (err: any) {
       setErrorMsg('Não foi possível excluir: ' + err.message);
+    }
+  }
+
+  async function toggleRevisado(entry: Entry) {
+    if (!session) return;
+    const updated = { ...entry, revisado: !entry.revisado };
+    setEntries(entries.map(e => e.id === entry.id ? updated : e));
+    try {
+      const { error } = await supabase.from('entries').update({ data: updated }).eq('id', entry.id).eq('user_id', session.user.id);
+      if (error) throw error;
+    } catch (err: any) {
+      setEntries(entries);
+      setErrorMsg('Não foi possível marcar como revisado: ' + err.message);
     }
   }
 
@@ -592,6 +607,7 @@ export default function Dashboard() {
             <table className="w-full text-xs">
               <thead className="bg-slate-100 text-slate-600">
                 <tr>
+                  <th className="p-2 text-center">✓</th>
                   <th className="p-2 text-left">Data</th>
                   <th className="p-2 text-left">Tour</th>
                   <th className="p-2 text-right">Clientes</th>
@@ -605,7 +621,13 @@ export default function Dashboard() {
                 {sortedDesc.map(e => {
                   const c = computeEntry(e, settings);
                   return (
-                    <tr key={e.id} className="border-t border-slate-100">
+                    <tr key={e.id} className={`border-t border-slate-100 ${e.revisado ? 'bg-emerald-50' : ''}`}>
+                      <td className="p-2 text-center">
+                        <button onClick={()=>toggleRevisado(e)} title="Marcar como revisado"
+                          className={`w-6 h-6 rounded-full border flex items-center justify-center mx-auto ${e.revisado ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-slate-300 text-transparent'}`}>
+                          ✓
+                        </button>
+                      </td>
                       <td className="p-2">{e.data}</td>
                       <td className="p-2">{e.tour}</td>
                       <td className="p-2 text-right">{c.clientesTotal}</td>
@@ -619,7 +641,7 @@ export default function Dashboard() {
                     </tr>
                   );
                 })}
-                {sorted.length===0 && <tr><td colSpan={7} className="p-4 text-center text-slate-400">Nenhum lançamento ainda.</td></tr>}
+                {sorted.length===0 && <tr><td colSpan={8} className="p-4 text-center text-slate-400">Nenhum lançamento ainda.</td></tr>}
               </tbody>
             </table>
           </div>

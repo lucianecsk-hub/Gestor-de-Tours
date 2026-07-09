@@ -548,6 +548,11 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-3">
                 <Field label="Comissão Gas ($)"><input type="number" className={inputCls} value={form.tipGas} onChange={e=>setForm({...form,tipGas:e.target.value})}/></Field>
                 <Field label="Tip Pax ($)"><input type="number" className={inputCls} value={form.tipPax} onChange={e=>setForm({...form,tipPax:e.target.value})}/></Field>
+                <Field label="Gas + Tip (Total)">
+                  <div className={inputCls + " bg-slate-100 text-slate-700 font-semibold"}>
+                    ${money(num(form.tipGas) + num(form.tipPax))}
+                  </div>
+                </Field>
               </div>
 
               <div className="flex flex-wrap gap-3">

@@ -136,6 +136,7 @@ export default function Dashboard() {
   }, [session]);
 
   const sorted = useMemo(() => [...entries].sort((a,b)=>a.data.localeCompare(b.data)), [entries]);
+  const sortedDesc = useMemo(() => [...sorted].reverse(), [sorted]);
 
   const quinzenaTotal = useMemo(() => {
     if (!form.data) return 0;
@@ -497,7 +498,7 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map(e => {
+                {sortedDesc.map(e => {
                   const c = computeEntry(e, settings);
                   return (
                     <tr key={e.id} className="border-t border-slate-100">

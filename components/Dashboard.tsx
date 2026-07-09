@@ -240,7 +240,12 @@ export default function Dashboard() {
     }
   }
 
-  function editEntry(e: Entry) { setForm(e); setEditingId(e.id); setTab('lancamentos'); }
+  function editEntry(e: Entry) {
+    setForm(e);
+    setEditingId(e.id);
+    setTab('lancamentos');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
 
   async function removeEntry(id: string) {
     if (!session) return;

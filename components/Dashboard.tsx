@@ -490,10 +490,9 @@ export default function Dashboard() {
                   <th className="p-2 text-left">Data</th>
                   <th className="p-2 text-left">Tour</th>
                   <th className="p-2 text-right">Clientes</th>
-                  <th className="p-2 text-right">Vendas Total $</th>
-                  <th className="p-2 text-right">Comissão City</th>
-                  <th className="p-2 text-right">Tip Total</th>
-                  <th className="p-2 text-center">Nota</th>
+                  <th className="p-2 text-right">Pagto Invoice</th>
+                  <th className="p-2 text-right">Tip Pax</th>
+                  <th className="p-2 text-right">Pagto Total</th>
                   <th className="p-2"></th>
                 </tr>
               </thead>
@@ -505,10 +504,9 @@ export default function Dashboard() {
                       <td className="p-2">{e.data}</td>
                       <td className="p-2">{e.tour}</td>
                       <td className="p-2 text-right">{c.clientesTotal}</td>
-                      <td className="p-2 text-right">${money(c.vendasTotal)}</td>
-                      <td className="p-2 text-right">${money(c.comissaoCity)}</td>
-                      <td className="p-2 text-right">${money(c.tipTotal)}</td>
-                      <td className="p-2 text-center">{e.nota !== '' ? e.nota : '-'}</td>
+                      <td className="p-2 text-right">${money(num(e.pagamentoInvoice))}</td>
+                      <td className="p-2 text-right">${money(num(e.tipPax))}</td>
+                      <td className="p-2 text-right">${money(c.pagamentoTotal)}</td>
                       <td className="p-2 text-right whitespace-nowrap">
                         <button onClick={()=>editEntry(e)} className="text-slate-500 hover:text-slate-900 mr-2">Editar</button>
                         <button onClick={()=>removeEntry(e.id)} className="text-red-500 hover:text-red-700">Excluir</button>
@@ -516,7 +514,7 @@ export default function Dashboard() {
                     </tr>
                   );
                 })}
-                {sorted.length===0 && <tr><td colSpan={8} className="p-4 text-center text-slate-400">Nenhum lançamento ainda.</td></tr>}
+                {sorted.length===0 && <tr><td colSpan={7} className="p-4 text-center text-slate-400">Nenhum lançamento ainda.</td></tr>}
               </tbody>
             </table>
           </div>

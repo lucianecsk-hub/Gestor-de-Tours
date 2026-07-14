@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Auth from '@/components/Auth';
+import ResetPassword from '@/components/ResetPassword';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
 const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM', 'RED ROCK'];
@@ -116,10 +117,14 @@ export default function Dashboard() {
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
   const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
   const [customRange, setCustomRange] = useState({start:'', end:''});
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, s) => setSession(s));
+    const { data: listener } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s);
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
+    });
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -457,6 +462,10 @@ export default function Dashboard() {
     ['invoice','Invoice'],
     ['config','Configurações'],
   ];
+
+  if (passwordRecovery) {
+    return <ResetPassword onDone={() => setPasswordRecovery(false)} />;
+  }
 
   if (session === undefined) {
     return <div className="max-w-5xl mx-auto px-4 py-10 text-sm text-slate-500">Carregando...</div>;

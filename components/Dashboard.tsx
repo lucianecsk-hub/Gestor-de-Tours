@@ -387,7 +387,7 @@ export default function Dashboard() {
   }, [sorted, customRange]);
 
   const customStats = useMemo(() => {
-    const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, cityQtdVendidos:0, tipClientes:0, comissaoGas:0, heli:0 };
+    const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, cityQtdVendidos:0, tipClientes:0, comissaoGas:0, heli:0, totalRecebido:0 };
     customEntries.forEach(e => {
       const c = computeEntry(e, settings);
       s.servicos += 1;
@@ -401,6 +401,7 @@ export default function Dashboard() {
       s.tipClientes += num(e.tipPax);
       s.comissaoGas += num(e.tipGas);
       s.heli += num(e.heliQtd);
+      s.totalRecebido += c.pagamentoTotal;
     });
     return s;
   }, [customEntries, settings]);
@@ -769,9 +770,10 @@ export default function Dashboard() {
                 <div className="flex justify-between py-2"><span className="text-slate-500">Inglês</span><span className="font-semibold">{customStats.ingles}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Helicóptero vendidos</span><span className="font-semibold">{customStats.heli}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">City Tours vendidos</span><span className="font-semibold">{customStats.cityQtdVendidos}</span></div>
-                <div className="flex justify-between py-2"><span className="text-slate-500">Faturado</span><span className="font-semibold">${money(customStats.faturado)}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-500">Valor Total da Invoice</span><span className="font-semibold">${money(customStats.faturado)}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Tip Clientes</span><span className="font-semibold">${money(customStats.tipClientes)}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Comissão Gas</span><span className="font-semibold">${money(customStats.comissaoGas)}</span></div>
+                <div className="flex justify-between py-2"><span className="text-slate-700 font-semibold">Total Recebido</span><span className="font-bold">${money(customStats.totalRecebido)}</span></div>
               </div>
             ) : (
               <p className="text-xs text-slate-400">Escolha as duas datas para ver os totais desse período.</p>

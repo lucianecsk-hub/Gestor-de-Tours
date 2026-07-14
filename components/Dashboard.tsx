@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Auth from '@/components/Auth';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
-const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM'];
+const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM', 'RED ROCK'];
 
 const DEFAULT_SETTINGS = {
   guiaNome: 'Daniel Kochinski',

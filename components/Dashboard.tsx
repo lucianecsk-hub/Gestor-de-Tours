@@ -6,7 +6,7 @@ import Auth from '@/components/Auth';
 import ResetPassword from '@/components/ResetPassword';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
-const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM', 'RED ROCK', 'CITY TOUR'];
+const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM', 'RED ROCK', 'CITY TOUR', 'TOUR DE 3 DIAS'];
 
 const DEFAULT_SETTINGS = {
   guiaNome: 'Daniel Kochinski',

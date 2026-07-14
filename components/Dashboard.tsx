@@ -658,7 +658,7 @@ export default function Dashboard() {
                       <td className="p-2 text-right">${money(c.pagamentoTotal)}</td>
                       <td className="p-2 text-right whitespace-nowrap">
                         <button onClick={()=>editEntry(e)} className="text-slate-500 hover:text-slate-900 mr-2">Editar</button>
-                        <button onClick={()=>removeEntry(e.id)} className="text-red-500 hover:text-red-700">Excluir</button>
+                        <button onClick={()=>{ if (window.confirm(`Tem certeza que deseja excluir o lançamento de ${e.data} (${e.tour})? Essa ação não pode ser desfeita.`)) removeEntry(e.id); }} className="text-red-500 hover:text-red-700">Excluir</button>
                       </td>
                     </tr>
                   );

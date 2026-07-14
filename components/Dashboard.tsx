@@ -91,6 +91,21 @@ function quinzenaBounds(dateStr: string) {
   return { start: `${yyyy}-${mm}-16`, end: `${yyyy}-${mm}-${String(lastDay).padStart(2,'0')}` };
 }
 
+const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function formatInvoicePeriod(startStr: string, endStr: string): string {
+  if (!startStr || !endStr) return '';
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  if (sy === ey && sm === em) {
+    return `${MONTHS_EN[sm-1]} ${sd} - ${ed}, ${ey}`;
+  }
+  if (sy === ey) {
+    return `${MONTHS_EN[sm-1]} ${sd} - ${MONTHS_EN[em-1]} ${ed}, ${ey}`;
+  }
+  return `${MONTHS_EN[sm-1]} ${sd}, ${sy} - ${MONTHS_EN[em-1]} ${ed}, ${ey}`;
+}
+
 function Field({label, children, className}: {label: string, children: React.ReactNode, className?: string}) {
   return (
     <label className={`flex flex-col gap-1 text-xs text-slate-600 flex-1 min-w-[90px] ${className || ''}`}>
@@ -850,6 +865,9 @@ export default function Dashboard() {
                 <div>
                   <div className="text-lg font-bold tracking-wide">INVOICE</div>
                   <div>{invoiceNum}/{new Date().getFullYear()}</div>
+                  {invoiceRange.start && invoiceRange.end && (
+                    <div className="text-xs text-slate-500 mt-1">{formatInvoicePeriod(invoiceRange.start, invoiceRange.end)}</div>
+                  )}
                 </div>
                 <div className="text-right text-xs">
                   <div className="font-semibold">DATE OF ISSUE</div>

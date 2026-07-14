@@ -401,6 +401,15 @@ export default function Dashboard() {
     return sorted.filter(e => e.data >= customRange.start && e.data <= customRange.end);
   }, [sorted, customRange]);
 
+  const customTourBreakdown = useMemo(() => {
+    const counts: Record<string, number> = {};
+    customEntries.forEach(e => {
+      const tour = e.tour || 'Sem tour';
+      counts[tour] = (counts[tour] || 0) + 1;
+    });
+    return Object.entries(counts).sort((a,b) => b[1] - a[1]);
+  }, [customEntries]);
+
   const customStats = useMemo(() => {
     const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, cityQtdVendidos:0, tipClientes:0, comissaoGas:0, heli:0, totalRecebido:0 };
     customEntries.forEach(e => {
@@ -776,7 +785,19 @@ export default function Dashboard() {
               <Field label="Até"><input type="date" className={inputCls} value={customRange.end} onChange={e=>setCustomRange({...customRange,end:e.target.value})}/></Field>
             </div>
             {customRange.start && customRange.end ? (
-              <div className="divide-y divide-slate-200">
+              <div>
+                <div className="mb-4">
+                  <span className="text-xs text-slate-500">Tours realizados no período</span>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {customTourBreakdown.map(([tour, count]) => (
+                      <span key={tour} className="text-xs bg-slate-100 border border-slate-200 rounded-full px-3 py-1">
+                        {count}x {tour}
+                      </span>
+                    ))}
+                    {customTourBreakdown.length === 0 && <span className="text-xs text-slate-400">Nenhum tour nesse período.</span>}
+                  </div>
+                </div>
+                <div className="divide-y divide-slate-200">
                 <div className="flex justify-between py-2"><span className="text-slate-500">Serviços</span><span className="font-semibold">{customStats.servicos}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Total de clientes</span><span className="font-semibold">{customStats.clientes}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Espanhol</span><span className="font-semibold">{customStats.espanhol}</span></div>
@@ -789,6 +810,7 @@ export default function Dashboard() {
                 <div className="flex justify-between py-2"><span className="text-slate-500">Tip Clientes</span><span className="font-semibold">${money(customStats.tipClientes)}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-500">Comissão Gas</span><span className="font-semibold">${money(customStats.comissaoGas)}</span></div>
                 <div className="flex justify-between py-2"><span className="text-slate-700 font-semibold">Total Recebido</span><span className="font-bold">${money(customStats.totalRecebido)}</span></div>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-slate-400">Escolha as duas datas para ver os totais desse período.</p>

@@ -50,3 +50,29 @@ create policy "Usuarios atualizam apenas suas proprias configuracoes"
   on settings for update
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ========== Historico de invoices enviadas ==========
+create table if not exists invoices_enviadas (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  numero integer not null,
+  periodo_inicio date not null,
+  periodo_fim date not null,
+  data_emissao date not null,
+  total numeric not null,
+  created_at timestamptz not null default now()
+);
+
+alter table invoices_enviadas enable row level security;
+
+create policy "Usuarios veem apenas suas proprias invoices enviadas"
+  on invoices_enviadas for select
+  using (auth.uid() = user_id);
+
+create policy "Usuarios inserem apenas suas proprias invoices enviadas"
+  on invoices_enviadas for insert
+  with check (auth.uid() = user_id);
+
+create policy "Usuarios excluem apenas suas proprias invoices enviadas"
+  on invoices_enviadas for delete
+  using (auth.uid() = user_id);

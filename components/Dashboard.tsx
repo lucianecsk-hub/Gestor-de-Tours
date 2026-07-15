@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS = {
   guiaEmail: 'danielkochinski@gmail.com',
   guiaTelefone: '702-542-8667',
   clienteNome: 'LAS VEGAS VIP SERVICES ONE LLC',
+  clienteEmail: '',
   clienteEndereco: '2566 LA CARA AVE',
   clienteCidade: 'LAS VEGAS, NV, 89121',
   proximoInvoiceNum: 51,
@@ -132,6 +133,7 @@ export default function Dashboard() {
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
   const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
   const [customRange, setCustomRange] = useState({start:'', end:''});
+  const [invoicesHistory, setInvoicesHistory] = useState<any[]>([]);
   const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
@@ -148,14 +150,16 @@ export default function Dashboard() {
     (async () => {
       setLoaded(false);
       try {
-        const [entriesRes, settingsRes] = await Promise.all([
+        const [entriesRes, settingsRes, invoicesRes] = await Promise.all([
           supabase.from('entries').select('id, data').eq('user_id', session.user.id),
           supabase.from('settings').select('data').eq('user_id', session.user.id).maybeSingle(),
+          supabase.from('invoices_enviadas').select('*').eq('user_id', session.user.id).order('numero', { ascending: false }),
         ]);
         if (entriesRes.error) throw entriesRes.error;
         if (settingsRes.error) throw settingsRes.error;
         setEntries((entriesRes.data || []).map((r: any) => ({ id: r.id, ...r.data })));
         if (settingsRes.data?.data) setSettings({ ...DEFAULT_SETTINGS, ...settingsRes.data.data });
+        if (!invoicesRes.error) setInvoicesHistory(invoicesRes.data || []);
       } catch (err: any) {
         setErrorMsg('Não foi possível carregar os dados: ' + err.message);
       } finally {
@@ -472,13 +476,48 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, settings.proximoInvoiceNum]);
 
+  function openEmailClient() {
+    if (!invoiceNum) return;
+    const periodo = formatInvoicePeriod(invoiceRange.start, invoiceRange.end);
+    const subject = `Invoice ${invoiceNum}/${new Date().getFullYear()} - ${periodo}`;
+    const body = `Hola,\n\nSigue la invoice del periodo ${periodo}.\n\nGracias!\n${settings.guiaNome}`;
+    const to = settings.clienteEmail || '';
+    const url = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = url;
+  }
+
   function startInvoice() { setInvoiceNum(invoiceNumInput); }
   async function finalizeInvoice() {
-    const next = {...settings, proximoInvoiceNum: (invoiceNum ?? settings.proximoInvoiceNum) + 1};
+    if (!session || invoiceNum === null) return;
+    const next = {...settings, proximoInvoiceNum: invoiceNum + 1};
     await persistSettings(next);
+    try {
+      const { data, error } = await supabase.from('invoices_enviadas').insert({
+        user_id: session.user.id,
+        numero: invoiceNum,
+        periodo_inicio: invoiceRange.start,
+        periodo_fim: invoiceRange.end,
+        data_emissao: invoiceDataEmissao,
+        total: invoiceTotal,
+      }).select().single();
+      if (!error && data) setInvoicesHistory([data, ...invoicesHistory]);
+    } catch (err) {
+      // não bloqueia o fluxo se o histórico falhar
+    }
     setInvoiceNum(null);
     setInvoiceRange({start:'', end:''});
     setInvoiceDataEmissao(new Date().toISOString().slice(0,10));
+  }
+
+  async function removeInvoiceHistory(id: string) {
+    if (!session) return;
+    if (!window.confirm('Remover esse registro do histórico de invoices enviadas?')) return;
+    try {
+      await supabase.from('invoices_enviadas').delete().eq('id', id).eq('user_id', session.user.id);
+      setInvoicesHistory(invoicesHistory.filter(i => i.id !== id));
+    } catch (err: any) {
+      setErrorMsg('Não foi possível remover: ' + err.message);
+    }
   }
 
   const TABS: [string,string][] = [
@@ -739,6 +778,7 @@ export default function Dashboard() {
               <Field label="Seu e-mail"><input className={inputCls} value={settings.guiaEmail} onChange={e=>persistSettings({...settings,guiaEmail:e.target.value})}/></Field>
               <Field label="Seu telefone"><input className={inputCls} value={settings.guiaTelefone} onChange={e=>persistSettings({...settings,guiaTelefone:e.target.value})}/></Field>
               <Field label="Cliente (Billed To) - nome"><input className={inputCls} value={settings.clienteNome} onChange={e=>persistSettings({...settings,clienteNome:e.target.value})}/></Field>
+              <Field label="Cliente - e-mail (para envio)"><input type="email" className={inputCls} value={settings.clienteEmail} onChange={e=>persistSettings({...settings,clienteEmail:e.target.value})}/></Field>
               <Field label="Cliente - endereço"><input className={inputCls} value={settings.clienteEndereco} onChange={e=>persistSettings({...settings,clienteEndereco:e.target.value})}/></Field>
               <Field label="Cliente - cidade/estado/CEP"><input className={inputCls} value={settings.clienteCidade} onChange={e=>persistSettings({...settings,clienteCidade:e.target.value})}/></Field>
               <Field label="Próximo número de invoice"><input type="number" className={inputCls} value={settings.proximoInvoiceNum} onChange={e=>persistSettings({...settings,proximoInvoiceNum:parseInt(e.target.value)||0})}/></Field>
@@ -874,11 +914,13 @@ export default function Dashboard() {
               {invoiceNum && (
                 <>
                   <button onClick={()=>window.print()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Imprimir / Salvar PDF</button>
+                  <button onClick={openEmailClient} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Enviar por E-mail</button>
                   <button onClick={finalizeInvoice} className="text-sm px-4 py-2 rounded border border-emerald-500 text-emerald-700">Confirmar invoice enviada (avança numeração)</button>
                 </>
               )}
             </div>
             <p className="text-xs text-slate-400 mt-2">Digite o número/ciclo que essa invoice deve ter (ex: 1, 2, 3... para cadastrar invoices antigas na mão). Fica sugerido automaticamente o próximo número (51) para as novas.</p>
+            <p className="text-xs text-slate-400 mt-1">"Enviar por E-mail" abre seu app de e-mail com destinatário, assunto e mensagem prontos — mas você precisa anexar o PDF manualmente (salve primeiro com "Imprimir / Salvar PDF"). Cadastre o e-mail do cliente em Configurações.</p>
           </div>
 
           {invoiceNum && (
@@ -971,6 +1013,37 @@ export default function Dashboard() {
               {invoiceEntries.length===0 && <div className="text-center text-slate-400 py-6">Selecione um período com lançamentos.</div>}
             </div>
           )}
+
+          <div className="no-print bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Histórico de Invoices Enviadas</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 text-slate-600">
+                  <tr>
+                    <th className="p-2 text-left">Nº</th>
+                    <th className="p-2 text-left">Período</th>
+                    <th className="p-2 text-left">Data de Emissão</th>
+                    <th className="p-2 text-right">Total</th>
+                    <th className="p-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoicesHistory.map(inv => (
+                    <tr key={inv.id} className="border-t border-slate-100">
+                      <td className="p-2">{inv.numero}</td>
+                      <td className="p-2">{formatInvoicePeriod(inv.periodo_inicio, inv.periodo_fim)}</td>
+                      <td className="p-2">{inv.data_emissao}</td>
+                      <td className="p-2 text-right">${money(Number(inv.total))}</td>
+                      <td className="p-2 text-right">
+                        <button onClick={()=>removeInvoiceHistory(inv.id)} className="text-red-500 hover:text-red-700">Remover</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {invoicesHistory.length===0 && <tr><td colSpan={5} className="p-4 text-center text-slate-400">Nenhuma invoice arquivada ainda.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
     </div>

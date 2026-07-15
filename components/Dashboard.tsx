@@ -134,6 +134,22 @@ export default function Dashboard() {
   const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
   const [customRange, setCustomRange] = useState({start:'', end:''});
   const [invoicesHistory, setInvoicesHistory] = useState<any[]>([]);
+  const [settingsForm, setSettingsForm] = useState<Settings>(DEFAULT_SETTINGS);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsSaved, setSettingsSaved] = useState(false);
+
+  useEffect(() => {
+    setSettingsForm(settings);
+  }, [settings]);
+
+  async function saveSettingsForm() {
+    setSettingsSaving(true);
+    await persistSettings(settingsForm);
+    setSettingsSaving(false);
+    setSettingsSaved(true);
+    setTimeout(() => setSettingsSaved(false), 2500);
+  }
+
   const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
@@ -740,9 +756,9 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold mb-3">Comissão do City Tour</h2>
             <p className="text-xs text-slate-500 mb-3">Se a "Quantidade Total" vendida no período for até o limite, todos os city tours valem a taxa menor. Se passar do limite, TODOS passam a valer a taxa maior.</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Limite (ex: 14)"><input type="number" className={inputCls} value={settings.cityTourLimite} onChange={e=>persistSettings({...settings,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
-              <Field label="Taxa até o limite ($/tour)"><input type="number" className={inputCls} value={settings.cityTourTaxaAte} onChange={e=>persistSettings({...settings,cityTourTaxaAte:parseInt(e.target.value)||0})}/></Field>
-              <Field label="Taxa acima do limite ($/tour, vale para todos)"><input type="number" className={inputCls} value={settings.cityTourTaxaDepois} onChange={e=>persistSettings({...settings,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Limite (ex: 14)"><input type="number" className={inputCls} value={settingsForm.cityTourLimite} onChange={e=>setSettingsForm({...settingsForm,cityTourLimite:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa até o limite ($/tour)"><input type="number" className={inputCls} value={settingsForm.cityTourTaxaAte} onChange={e=>setSettingsForm({...settingsForm,cityTourTaxaAte:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa acima do limite ($/tour, vale para todos)"><input type="number" className={inputCls} value={settingsForm.cityTourTaxaDepois} onChange={e=>setSettingsForm({...settingsForm,cityTourTaxaDepois:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 
@@ -750,7 +766,7 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold mb-3">Comissão do Helicóptero</h2>
             <p className="text-xs text-slate-500 mb-3">Valor fixo por venda, preenchido automaticamente ao lançar a quantidade.</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Taxa por venda ($)"><input type="number" className={inputCls} value={settings.heliTaxa} onChange={e=>persistSettings({...settings,heliTaxa:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa por venda ($)"><input type="number" className={inputCls} value={settingsForm.heliTaxa} onChange={e=>setSettingsForm({...settingsForm,heliTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 
@@ -758,7 +774,7 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold mb-3">Pgto Extra por Pax (Brasileiros)</h2>
             <p className="text-xs text-slate-500 mb-3">Valor fixo por pax brasileiro, preenchido automaticamente ao lançar a quantidade (mesma lógica do City Tour).</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Taxa por pax ($)"><input type="number" className={inputCls} value={settings.pgtoExtraPaxTaxa} onChange={e=>persistSettings({...settings,pgtoExtraPaxTaxa:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Taxa por pax ($)"><input type="number" className={inputCls} value={settingsForm.pgtoExtraPaxTaxa} onChange={e=>setSettingsForm({...settingsForm,pgtoExtraPaxTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 
@@ -766,23 +782,31 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold mb-3">Comissão Gas</h2>
             <p className="text-xs text-slate-500 mb-3">Valor padrão que já vem preenchido em cada novo lançamento. Pode alterar quando necessário.</p>
             <div className="grid grid-cols-3 gap-3">
-              <Field label="Valor padrão ($)"><input type="number" className={inputCls} value={settings.comissaoGasTaxa} onChange={e=>persistSettings({...settings,comissaoGasTaxa:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Valor padrão ($)"><input type="number" className={inputCls} value={settingsForm.comissaoGasTaxa} onChange={e=>setSettingsForm({...settingsForm,comissaoGasTaxa:parseInt(e.target.value)||0})}/></Field>
             </div>
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Dados para a Invoice</h2>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Seu nome (guia)"><input className={inputCls} value={settings.guiaNome} onChange={e=>persistSettings({...settings,guiaNome:e.target.value})}/></Field>
-              <Field label="Seu endereço"><input className={inputCls} value={settings.guiaEndereco} onChange={e=>persistSettings({...settings,guiaEndereco:e.target.value})}/></Field>
-              <Field label="Seu e-mail"><input className={inputCls} value={settings.guiaEmail} onChange={e=>persistSettings({...settings,guiaEmail:e.target.value})}/></Field>
-              <Field label="Seu telefone"><input className={inputCls} value={settings.guiaTelefone} onChange={e=>persistSettings({...settings,guiaTelefone:e.target.value})}/></Field>
-              <Field label="Cliente (Billed To) - nome"><input className={inputCls} value={settings.clienteNome} onChange={e=>persistSettings({...settings,clienteNome:e.target.value})}/></Field>
-              <Field label="Cliente - e-mail (para envio)"><input type="email" className={inputCls} value={settings.clienteEmail} onChange={e=>persistSettings({...settings,clienteEmail:e.target.value})}/></Field>
-              <Field label="Cliente - endereço"><input className={inputCls} value={settings.clienteEndereco} onChange={e=>persistSettings({...settings,clienteEndereco:e.target.value})}/></Field>
-              <Field label="Cliente - cidade/estado/CEP"><input className={inputCls} value={settings.clienteCidade} onChange={e=>persistSettings({...settings,clienteCidade:e.target.value})}/></Field>
-              <Field label="Próximo número de invoice"><input type="number" className={inputCls} value={settings.proximoInvoiceNum} onChange={e=>persistSettings({...settings,proximoInvoiceNum:parseInt(e.target.value)||0})}/></Field>
+              <Field label="Seu nome (guia)"><input className={inputCls} value={settingsForm.guiaNome} onChange={e=>setSettingsForm({...settingsForm,guiaNome:e.target.value})}/></Field>
+              <Field label="Seu endereço"><input className={inputCls} value={settingsForm.guiaEndereco} onChange={e=>setSettingsForm({...settingsForm,guiaEndereco:e.target.value})}/></Field>
+              <Field label="Seu e-mail"><input className={inputCls} value={settingsForm.guiaEmail} onChange={e=>setSettingsForm({...settingsForm,guiaEmail:e.target.value})}/></Field>
+              <Field label="Seu telefone"><input className={inputCls} value={settingsForm.guiaTelefone} onChange={e=>setSettingsForm({...settingsForm,guiaTelefone:e.target.value})}/></Field>
+              <Field label="Cliente (Billed To) - nome"><input className={inputCls} value={settingsForm.clienteNome} onChange={e=>setSettingsForm({...settingsForm,clienteNome:e.target.value})}/></Field>
+              <Field label="Cliente - e-mail (para envio)"><input type="email" className={inputCls} value={settingsForm.clienteEmail} onChange={e=>setSettingsForm({...settingsForm,clienteEmail:e.target.value})}/></Field>
+              <Field label="Cliente - endereço"><input className={inputCls} value={settingsForm.clienteEndereco} onChange={e=>setSettingsForm({...settingsForm,clienteEndereco:e.target.value})}/></Field>
+              <Field label="Cliente - cidade/estado/CEP"><input className={inputCls} value={settingsForm.clienteCidade} onChange={e=>setSettingsForm({...settingsForm,clienteCidade:e.target.value})}/></Field>
+              <Field label="Próximo número de invoice"><input type="number" className={inputCls} value={settingsForm.proximoInvoiceNum} onChange={e=>setSettingsForm({...settingsForm,proximoInvoiceNum:parseInt(e.target.value)||0})}/></Field>
             </div>
+          </div>
+
+          <div className="sticky bottom-0 bg-blue-50 pt-2 pb-1 flex items-center gap-3">
+            <button disabled={settingsSaving} onClick={saveSettingsForm}
+              className="bg-slate-900 text-white text-sm font-medium px-6 py-3 rounded hover:bg-slate-700 disabled:opacity-50 w-full sm:w-auto">
+              {settingsSaving ? 'Salvando...' : 'Salvar Configurações'}
+            </button>
+            {settingsSaved && <span className="text-sm text-emerald-700">✓ Salvo!</span>}
           </div>
 
           <div className="bg-white rounded-lg border border-slate-200 p-4">

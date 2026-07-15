@@ -492,14 +492,13 @@ export default function Dashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, settings.proximoInvoiceNum]);
 
-  function openEmailClient() {
-    if (!invoiceNum) return;
+  function buildEmailUrl(): string {
+    if (!invoiceNum) return '#';
     const periodo = formatInvoicePeriod(invoiceRange.start, invoiceRange.end);
     const subject = `Invoice ${invoiceNum}/${new Date().getFullYear()} - ${periodo}`;
     const body = `Hola,\n\nSigue la invoice del periodo ${periodo}.\n\nGracias!\n${settings.guiaNome}`;
     const to = settings.clienteEmail || '';
-    const url = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = url;
+    return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   }
 
   function startInvoice() { setInvoiceNum(invoiceNumInput); }
@@ -938,7 +937,7 @@ export default function Dashboard() {
               {invoiceNum && (
                 <>
                   <button onClick={()=>window.print()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Imprimir / Salvar PDF</button>
-                  <button onClick={openEmailClient} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Enviar por E-mail</button>
+                  <a href={buildEmailUrl()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded inline-block text-center">Enviar por E-mail</a>
                   <button onClick={finalizeInvoice} className="text-sm px-4 py-2 rounded border border-emerald-500 text-emerald-700">Confirmar invoice enviada (avança numeração)</button>
                 </>
               )}

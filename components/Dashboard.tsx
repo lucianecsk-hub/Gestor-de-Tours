@@ -4,8 +4,31 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Auth from '@/components/Auth';
 import ResetPassword from '@/components/ResetPassword';
+import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
+
+const MOOD_META: Record<string, { emoji: string; score: number }> = {
+  'Feliz':       { emoji: '😄', score: 2 },
+  'Animado':     { emoji: '🤩', score: 2 },
+  'Produtivo':   { emoji: '💪', score: 1 },
+  'Ativo':       { emoji: '⚡', score: 1 },
+  'Falante':     { emoji: '🗣️', score: 0 },
+  'Calado':      { emoji: '🤐', score: 0 },
+  'Com sono':    { emoji: '😴', score: -1 },
+  'Improdutivo': { emoji: '📉', score: -1 },
+  'Frustrado':   { emoji: '😤', score: -2 },
+  'Triste':      { emoji: '😢', score: -2 },
+};
+
+function moodGaugeEmoji(avg: number): string {
+  if (avg >= 1) return '😄';
+  if (avg >= 0.3) return '🙂';
+  if (avg > -0.3) return '😐';
+  if (avg > -1) return '🙁';
+  return '😞';
+}
+
 const TOUR_OPTIONS = ['GCW', 'GCW BILINGUE', 'GCW TRILINGUE', 'DEATH VALLEY', 'DV + 51', 'DV + STARS', 'VALLEY OF FIRE', 'MT CHARLESTON', 'ANTILOPE', 'ZION', 'ZION + BRYCE', 'HOOVER DAM', 'RED ROCK', 'CITY TOUR', 'TOUR DE 3 DIAS'];
 
 const DEFAULT_SETTINGS = {
@@ -551,6 +574,29 @@ export default function Dashboard() {
     return counts;
   }, [sorted]);
 
+  const moodScoreAvg = useMemo(() => {
+    let total = 0, count = 0;
+    sorted.forEach(e => (e.moods||[]).forEach(m => {
+      if (MOOD_META[m]) { total += MOOD_META[m].score; count += 1; }
+    }));
+    return count ? total / count : 0;
+  }, [sorted]);
+
+  const moodByDay = useMemo(() => {
+    const map: Record<string, { total: number; count: number }> = {};
+    sorted.forEach(e => {
+      (e.moods||[]).forEach(m => {
+        if (!MOOD_META[m]) return;
+        if (!map[e.data]) map[e.data] = { total: 0, count: 0 };
+        map[e.data].total += MOOD_META[m].score;
+        map[e.data].count += 1;
+      });
+    });
+    return Object.entries(map)
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([data, v]) => ({ data: data.slice(5), score: Number((v.total / v.count).toFixed(2)) }));
+  }, [sorted]);
+
   const avgNota = useMemo(() => {
     const withNota = sorted.filter(e => e.nota !== '' && e.nota !== undefined && e.nota !== null);
     if (!withNota.length) return null;
@@ -1072,12 +1118,51 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {MOODS.map(m => (
                 <div key={m} className="border border-slate-200 rounded p-2 text-center">
+                  <div className="text-2xl">{MOOD_META[m]?.emoji}</div>
                   <div className="text-xs text-slate-500">{m}</div>
                   <div className="text-lg font-semibold">{moodCounts[m]}</div>
                 </div>
               ))}
             </div>
             <p className="text-xs text-slate-500 mt-3">Nota média dos tours: <span className="font-semibold text-slate-800">{avgNota ?? '—'}</span> / 5</p>
+
+            <div className="mt-6">
+              <span className="text-xs font-medium text-slate-600">Termômetro geral do seu humor</span>
+              <div className="relative mt-3 mb-1 h-4 rounded-full" style={{ background: 'linear-gradient(to right, #ef4444, #f59e0b, #22c55e)' }}>
+                <div
+                  className="absolute -top-6 text-2xl transition-all"
+                  style={{ left: `${Math.min(100, Math.max(0, ((moodScoreAvg + 2) / 4) * 100))}%`, transform: 'translateX(-50%)' }}
+                >
+                  {moodGaugeEmoji(moodScoreAvg)}
+                </div>
+              </div>
+              <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                <span>Precisa de atenção</span>
+                <span>Neutro</span>
+                <span>Ótimo</span>
+              </div>
+            </div>
+
+            {moodByDay.length > 0 && (
+              <div className="mt-6">
+                <span className="text-xs font-medium text-slate-600">Evolução do humor por dia</span>
+                <div className="mt-2" style={{ width: '100%', height: 200 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={moodByDay} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="data" tick={{ fontSize: 10 }} />
+                      <YAxis domain={[-2, 2]} tick={{ fontSize: 10 }} />
+                      <ReferenceLine y={0} stroke="#cbd5e1" />
+                      <Tooltip formatter={(v: any) => [v, 'Humor']} labelFormatter={(l) => `Dia ${l}`} />
+                      <Bar dataKey="score" radius={[3,3,0,0]}>
+                        {moodByDay.map((d, i) => (
+                          <Cell key={i} fill={d.score > 0.3 ? '#22c55e' : d.score < -0.3 ? '#ef4444' : '#f59e0b'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

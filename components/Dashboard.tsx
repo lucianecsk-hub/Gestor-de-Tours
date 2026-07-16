@@ -45,10 +45,22 @@ type Entry = {
 
 type Settings = typeof DEFAULT_SETTINGS;
 
+const LV_TZ = 'America/Los_Angeles'; // Las Vegas usa o mesmo fuso que Los Angeles (Pacific Time)
+
+function todayInLasVegas(): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: LV_TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
+  return fmt.format(new Date());
+}
+
+function currentYearInLasVegas(): number {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: LV_TZ, year: 'numeric' });
+  return parseInt(fmt.format(new Date()), 10);
+}
+
 function emptyEntry(gasDefault: string = '40'): Entry {
   return {
     id: crypto.randomUUID(),
-    data: new Date().toISOString().slice(0,10),
+    data: todayInLasVegas(),
     tour: 'GCW',
     valorTour: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
@@ -144,7 +156,7 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
-  const [invoiceDataEmissao, setInvoiceDataEmissao] = useState(() => new Date().toISOString().slice(0,10));
+  const [invoiceDataEmissao, setInvoiceDataEmissao] = useState(() => todayInLasVegas());
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
   const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
   const [customRange, setCustomRange] = useState({start:'', end:''});
@@ -563,7 +575,7 @@ export default function Dashboard() {
   function buildEmailUrl(): string {
     if (!invoiceNum) return '#';
     const periodo = formatInvoicePeriod(invoiceRange.start, invoiceRange.end);
-    const subject = `Invoice ${invoiceNum}/${new Date().getFullYear()} - ${periodo}`;
+    const subject = `Invoice ${invoiceNum}/${currentYearInLasVegas()} - ${periodo}`;
     const body = `Hola,\n\nSigue la invoice del periodo ${periodo}.\n\nGracias!\n${settings.guiaNome}`;
     const to = settings.clienteEmail || '';
     return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
@@ -599,7 +611,7 @@ export default function Dashboard() {
     }
     setInvoiceNum(null);
     setInvoiceRange({start:'', end:''});
-    setInvoiceDataEmissao(new Date().toISOString().slice(0,10));
+    setInvoiceDataEmissao(todayInLasVegas());
   }
 
   async function removeInvoiceHistory(id: string) {
@@ -1097,7 +1109,7 @@ export default function Dashboard() {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <div className="text-lg font-bold tracking-wide">INVOICE</div>
-                  <div>{invoiceNum}/{new Date().getFullYear()}</div>
+                  <div>{invoiceNum}/{currentYearInLasVegas()}</div>
                   {invoiceRange.start && invoiceRange.end && (
                     <div className="text-xs text-slate-500 mt-1">{formatInvoicePeriod(invoiceRange.start, invoiceRange.end)}</div>
                   )}

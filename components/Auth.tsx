@@ -46,7 +46,7 @@ export default function Auth({ onAuthed }: { onAuthed: () => void }) {
   };
 
   return (
-    <div className="min-h-screen bg-blue-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-blue-100 flex items-center justify-center px-4">
       <div className="w-full max-w-sm bg-white border border-slate-200 rounded-lg p-6">
         <h1 className="text-lg font-semibold text-slate-900">Gestor de Tours & Invoices</h1>
         <p className="text-sm text-slate-500 mt-1 mb-5">{titles[mode]}</p>

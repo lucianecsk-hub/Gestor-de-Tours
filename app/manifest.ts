@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Lançamentos diários de tours, comissões, humor do dia e geração de invoice.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#eff6ff',
+    background_color: '#dbeafe',
     theme_color: '#0f172a',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

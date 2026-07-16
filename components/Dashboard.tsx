@@ -818,7 +818,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 text-slate-800">
+    <div className="min-h-screen bg-blue-100 text-slate-800">
       <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-2">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
           <div className="flex items-center gap-2">
@@ -834,10 +834,10 @@ export default function Dashboard() {
           </div>
         </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
-        <div className="grid grid-cols-6 sm:flex sm:gap-1 gap-1 mt-4 bg-blue-100 rounded-lg p-1 sm:w-fit">
+        <div className="grid grid-cols-3 sm:flex sm:gap-1 gap-1.5 mt-4 bg-blue-200 rounded-lg p-1 sm:w-fit">
           {TABS.map(([key,label]) => (
             <button key={key} onClick={()=>setTab(key)}
-              className={`px-1 sm:px-4 py-2 sm:py-1.5 text-[10px] sm:text-sm font-medium rounded-md transition text-center leading-tight ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-200/60'}`}>
+              className={`px-1 sm:px-4 py-2 sm:py-1.5 text-[10px] sm:text-sm font-medium rounded-md transition text-center leading-tight overflow-hidden text-ellipsis whitespace-nowrap ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-900 hover:bg-blue-300/60'}`}>
               {label}
             </button>
           ))}
@@ -1059,7 +1059,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="sticky bottom-0 bg-blue-50 pt-2 pb-1 flex items-center gap-3">
+          <div className="sticky bottom-0 bg-blue-100 pt-2 pb-1 flex items-center gap-3">
             <button disabled={settingsSaving} onClick={saveSettingsForm}
               className="bg-slate-900 text-white text-sm font-medium px-6 py-3 rounded hover:bg-slate-700 disabled:opacity-50 w-full sm:w-auto">
               {settingsSaving ? 'Salvando...' : 'Salvar Configurações'}

@@ -157,6 +157,56 @@ function formatInvoicePeriodPT(startStr: string, endStr: string): string {
   return `${sd} de ${MONTHS_PT[sm-1]} de ${sy} a ${ed} de ${MONTHS_PT[em-1]} de ${ey}`;
 }
 
+function parseYMD(s: string): Date {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatYMD(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function mondayOfWeek(dateStr: string): string {
+  const d = parseYMD(dateStr);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return formatYMD(d);
+}
+
+const WEEKDAYS_PT = ['D','S','T','Q','Q','S','S'];
+
+function MiniMonth({ year, month, highlighted }: { year: number; month: number; highlighted: Set<string> }) {
+  const first = new Date(year, month - 1, 1);
+  const startOffset = first.getDay();
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < startOffset; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  return (
+    <div className="border border-slate-200 rounded p-2">
+      <div className="text-xs font-semibold text-center mb-1">{MONTHS_PT[month-1].slice(0,3)}</div>
+      <div className="grid grid-cols-7 gap-0.5 text-[9px] text-slate-400 mb-0.5">
+        {WEEKDAYS_PT.map((w,i) => <div key={i} className="text-center">{w}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {cells.map((d, i) => {
+          if (d === null) return <div key={i} />;
+          const dateStr = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const has = highlighted.has(dateStr);
+          return (
+            <div key={i} className={`text-[9px] text-center rounded-sm py-0.5 ${has ? 'bg-emerald-500 text-white font-semibold' : 'text-slate-500'}`}>
+              {d}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+
 function Field({label, children, className}: {label: string, children: React.ReactNode, className?: string}) {
   return (
     <label className={`flex flex-col gap-1 text-xs text-slate-600 flex-1 min-w-[90px] ${className || ''}`}>
@@ -610,6 +660,64 @@ export default function Dashboard() {
       .map(([data, v]) => ({ data: data.slice(5), nota: Number((v.total / v.count).toFixed(1)) }));
   }, [sorted]);
 
+  const [statsGranularity, setStatsGranularity] = useState<'semana'|'quinzena'|'mes'>('mes');
+  const [calendarYear, setCalendarYear] = useState<number>(() => currentYearInLasVegas());
+
+  function groupEntriesBy(granularity: 'semana'|'quinzena'|'mes') {
+    const map: Record<string, { label: string; start: string; end: string; totalRecebido: number; faturado: number; clientes: number; servicos: number }> = {};
+    sorted.forEach(e => {
+      let key: string, label: string, start: string, end: string;
+      if (granularity === 'semana') {
+        start = mondayOfWeek(e.data);
+        const endD = parseYMD(start); endD.setDate(endD.getDate()+6);
+        end = formatYMD(endD);
+        key = start;
+        label = `Semana de ${start.slice(8,10)}/${start.slice(5,7)}`;
+      } else if (granularity === 'quinzena') {
+        const b = quinzenaBounds(e.data);
+        start = b.start; end = b.end; key = start;
+        label = formatInvoicePeriodPT(start, end);
+      } else {
+        key = e.data.slice(0,7);
+        const [y, m] = key.split('-').map(Number);
+        start = `${key}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        end = `${key}-${String(lastDay).padStart(2,'0')}`;
+        label = `${MONTHS_PT[m-1]}/${y}`;
+      }
+      if (!map[key]) map[key] = { label, start, end, totalRecebido: 0, faturado: 0, clientes: 0, servicos: 0 };
+      const c = computeEntry(e, settings);
+      map[key].totalRecebido += c.pagamentoTotal;
+      map[key].faturado += c.vendasTotal;
+      map[key].clientes += c.clientesTotal;
+      map[key].servicos += 1;
+    });
+    return Object.entries(map).sort((a,b) => a[0].localeCompare(b[0])).map(([key, v]) => ({ key, ...v }));
+  }
+
+  const monthlyGroups = useMemo(() => groupEntriesBy('mes'), [sorted, settings]);
+  const statsGroups = useMemo(() => groupEntriesBy(statsGranularity), [sorted, settings, statsGranularity]);
+
+  const bestMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido > a.totalRecebido ? b : a) : null, [monthlyGroups]);
+  const worstMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido < a.totalRecebido ? b : a) : null, [monthlyGroups]);
+  const avgMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((s,g)=>s+g.totalRecebido,0)/monthlyGroups.length : 0, [monthlyGroups]);
+
+  const statsSummary = useMemo(() => {
+    const vals = statsGroups.map(g => g.totalRecebido).sort((a,b)=>a-b);
+    if (!vals.length) return { media: 0, mediana: 0, maior: 0, menor: 0 };
+    const media = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const mid = Math.floor(vals.length / 2);
+    const mediana = vals.length % 2 ? vals[mid] : (vals[mid-1] + vals[mid]) / 2;
+    return { media, mediana, maior: vals[vals.length-1], menor: vals[0] };
+  }, [statsGroups]);
+
+  const highlightedDates = useMemo(() => new Set(sorted.map(e => e.data)), [sorted]);
+  const calendarYearsAvailable = useMemo(() => {
+    const years = new Set(sorted.map(e => parseInt(e.data.slice(0,4), 10)));
+    years.add(currentYearInLasVegas());
+    return Array.from(years).sort((a,b)=>a-b);
+  }, [sorted]);
+
   const avgNota = useMemo(() => {
     const withNota = sorted.filter(e => e.nota !== '' && e.nota !== undefined && e.nota !== null);
     if (!withNota.length) return null;
@@ -687,6 +795,7 @@ export default function Dashboard() {
   const TABS: [string,string][] = [
     ['lancamentos','Lançamentos'],
     ['relatorios','Relatórios'],
+    ['stats','📊'],
     ['humor','😊'],
     ['invoice','Invoice'],
     ['config','Configurações'],
@@ -725,7 +834,7 @@ export default function Dashboard() {
           </div>
         </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
-        <div className="grid grid-cols-5 sm:flex sm:gap-1 gap-1 mt-4 bg-blue-100 rounded-lg p-1 sm:w-fit">
+        <div className="grid grid-cols-6 sm:flex sm:gap-1 gap-1 mt-4 bg-blue-100 rounded-lg p-1 sm:w-fit">
           {TABS.map(([key,label]) => (
             <button key={key} onClick={()=>setTab(key)}
               className={`px-1 sm:px-4 py-2 sm:py-1.5 text-[10px] sm:text-sm font-medium rounded-md transition text-center leading-tight ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-200/60'}`}>
@@ -1125,6 +1234,119 @@ export default function Dashboard() {
                 {monthly.length===0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">Sem dados ainda.</td></tr>}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {tab === 'stats' && (
+        <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
+              <div className="text-xs text-emerald-700 font-medium">🏆 Melhor Mês</div>
+              <div className="text-sm font-bold text-emerald-900 mt-1">{bestMonth?.label ?? '—'}</div>
+              <div className="text-lg font-bold text-emerald-700">${bestMonth ? money(bestMonth.totalRecebido) : '0.00'}</div>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+              <div className="text-xs text-red-700 font-medium">📉 Pior Mês</div>
+              <div className="text-sm font-bold text-red-900 mt-1">{worstMonth?.label ?? '—'}</div>
+              <div className="text-lg font-bold text-red-700">${worstMonth ? money(worstMonth.totalRecebido) : '0.00'}</div>
+            </div>
+            <div className="bg-slate-100 border border-slate-200 rounded-lg p-4 text-center col-span-2 sm:col-span-1">
+              <div className="text-xs text-slate-600 font-medium">Média Mensal (Total Recebido)</div>
+              <div className="text-lg font-bold text-slate-800 mt-1">${money(avgMonth)}</div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-3">Análise por Período</h2>
+            <div className="flex gap-2 mb-4">
+              {(['semana','quinzena','mes'] as const).map(g => (
+                <button key={g} onClick={()=>setStatsGranularity(g)}
+                  className={`text-xs px-3 py-1.5 rounded-full border transition ${statsGranularity===g ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300'}`}>
+                  {g === 'semana' ? 'Semanal' : g === 'quinzena' ? 'Quinzenal' : 'Mensal'}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ width: '100%', height: 220 }}>
+              <ResponsiveContainer>
+                <BarChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.floor(statsGroups.length/8))} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(v: any) => [`$${money(Number(v))}`, 'Total Recebido']} />
+                  <Bar dataKey="totalRecebido" radius={[3,3,0,0]}>
+                    {statsGroups.map((g, i) => (
+                      <Cell key={i} fill={g.totalRecebido >= statsSummary.media ? '#22c55e' : '#f59e0b'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 mt-4">
+              <div className="text-center border border-slate-200 rounded p-2">
+                <div className="text-[10px] text-slate-500">Média</div>
+                <div className="text-sm font-semibold">${money(statsSummary.media)}</div>
+              </div>
+              <div className="text-center border border-slate-200 rounded p-2">
+                <div className="text-[10px] text-slate-500">Mediana</div>
+                <div className="text-sm font-semibold">${money(statsSummary.mediana)}</div>
+              </div>
+              <div className="text-center border border-slate-200 rounded p-2">
+                <div className="text-[10px] text-slate-500">Maior</div>
+                <div className="text-sm font-semibold text-emerald-600">${money(statsSummary.maior)}</div>
+              </div>
+              <div className="text-center border border-slate-200 rounded p-2">
+                <div className="text-[10px] text-slate-500">Menor</div>
+                <div className="text-sm font-semibold text-red-600">${money(statsSummary.menor)}</div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto mt-4">
+              <table className="w-full text-xs">
+                <thead className="bg-slate-100 text-slate-600">
+                  <tr>
+                    <th className="p-2 text-left">Período</th>
+                    <th className="p-2 text-right">Serviços</th>
+                    <th className="p-2 text-right">Clientes</th>
+                    <th className="p-2 text-right">Total Recebido</th>
+                    <th className="p-2 text-right">Variação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statsGroups.map((g, i) => {
+                    const prev = i > 0 ? statsGroups[i-1].totalRecebido : null;
+                    return (
+                      <tr key={g.key} className="border-t border-slate-100">
+                        <td className="p-2">{g.label}</td>
+                        <td className="p-2 text-right">{g.servicos}</td>
+                        <td className="p-2 text-right">{g.clientes}</td>
+                        <td className="p-2 text-right font-medium">${money(g.totalRecebido)}</td>
+                        <td className={`p-2 text-right ${prev===null ? 'text-slate-400' : g.totalRecebido > prev ? 'text-emerald-600' : g.totalRecebido < prev ? 'text-red-500' : 'text-slate-400'}`}>
+                          {prev===null ? '—' : pctChange(g.totalRecebido, prev)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {statsGroups.length===0 && <tr><td colSpan={5} className="p-4 text-center text-slate-400">Sem dados ainda.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold">Calendário Anual — dias já lançados</h2>
+              <select value={calendarYear} onChange={e=>setCalendarYear(parseInt(e.target.value,10))} className={inputCls + " w-24"}>
+                {calendarYearsAvailable.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {Array.from({length:12}, (_, i) => i+1).map(m => (
+                <MiniMonth key={m} year={calendarYear} month={m} highlighted={highlightedDates} />
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2">Dias em verde já têm lançamento salvo.</p>
           </div>
         </div>
       )}

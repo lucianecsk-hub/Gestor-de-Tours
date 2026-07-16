@@ -107,6 +107,21 @@ function formatInvoicePeriod(startStr: string, endStr: string): string {
   return `${MONTHS_EN[sm-1]} ${sd}, ${sy} - ${MONTHS_EN[em-1]} ${ed}, ${ey}`;
 }
 
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function formatInvoicePeriodPT(startStr: string, endStr: string): string {
+  if (!startStr || !endStr) return '';
+  const [sy, sm, sd] = startStr.split('-').map(Number);
+  const [ey, em, ed] = endStr.split('-').map(Number);
+  if (sy === ey && sm === em) {
+    return `${sd} a ${ed} de ${MONTHS_PT[sm-1]} de ${ey}`;
+  }
+  if (sy === ey) {
+    return `${sd} de ${MONTHS_PT[sm-1]} a ${ed} de ${MONTHS_PT[em-1]} de ${ey}`;
+  }
+  return `${sd} de ${MONTHS_PT[sm-1]} de ${sy} a ${ed} de ${MONTHS_PT[em-1]} de ${ey}`;
+}
+
 function Field({label, children, className}: {label: string, children: React.ReactNode, className?: string}) {
   return (
     <label className={`flex flex-col gap-1 text-xs text-slate-600 flex-1 min-w-[90px] ${className || ''}`}>
@@ -548,6 +563,16 @@ export default function Dashboard() {
     const body = `Hola,\n\nSigue la invoice del periodo ${periodo}.\n\nGracias!\n${settings.guiaNome}`;
     const to = settings.clienteEmail || '';
     return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+
+  function printInvoice() {
+    if (!invoiceNum) { window.print(); return; }
+    const original = document.title;
+    document.title = `Invoice ${invoiceNum} de ${formatInvoicePeriodPT(invoiceRange.start, invoiceRange.end)}`;
+    const restore = () => { document.title = original; window.removeEventListener('afterprint', restore); };
+    window.addEventListener('afterprint', restore);
+    window.print();
+    setTimeout(restore, 3000);
   }
 
   function startInvoice() { setInvoiceNum(invoiceNumInput); }
@@ -1053,7 +1078,7 @@ export default function Dashboard() {
               <button onClick={startInvoice} className="bg-slate-900 text-white text-sm font-medium px-4 py-2 rounded hover:bg-slate-700">Gerar prévia</button>
               {invoiceNum && (
                 <>
-                  <button onClick={()=>window.print()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Imprimir / Salvar PDF</button>
+                  <button onClick={printInvoice} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded">Imprimir / Salvar PDF</button>
                   <a href={buildEmailUrl()} className="border border-slate-300 text-sm font-medium px-4 py-2 rounded inline-block text-center">Enviar por E-mail</a>
                   <button onClick={finalizeInvoice} className="text-sm px-4 py-2 rounded border border-emerald-500 text-emerald-700">Confirmar invoice enviada (avança numeração)</button>
                 </>

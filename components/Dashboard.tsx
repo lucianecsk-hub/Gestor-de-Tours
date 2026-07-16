@@ -470,7 +470,11 @@ export default function Dashboard() {
     return s;
   }
 
-  const compareStats = useMemo(() => comparePeriods.map(p => computePeriodStats(p.start, p.end)), [comparePeriods, sorted, settings]);
+  const sortedComparePeriods = useMemo(() =>
+    [...comparePeriods].sort((a,b) => a.start.localeCompare(b.start)),
+    [comparePeriods]
+  );
+  const compareStats = useMemo(() => sortedComparePeriods.map(p => computePeriodStats(p.start, p.end)), [sortedComparePeriods, sorted, settings]);
 
   function pctChange(current: number, previous: number): string {
     if (!previous) return current ? '+100%' : '—';
@@ -947,7 +951,7 @@ export default function Dashboard() {
                   <thead className="bg-slate-100 text-slate-600">
                     <tr>
                       <th className="p-2 text-left">Métrica</th>
-                      {comparePeriods.map((p, i) => (
+                      {sortedComparePeriods.map((p, i) => (
                         <React.Fragment key={i}>
                           <th className="p-2 text-right">{formatInvoicePeriod(p.start, p.end)}</th>
                           {i > 0 && <th className="p-2 text-right text-slate-400">Variação</th>}

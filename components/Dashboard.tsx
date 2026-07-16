@@ -870,9 +870,9 @@ export default function Dashboard() {
         </div>
         {errorMsg && <div className="mt-3 text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">{errorMsg}</div>}
         <div className="grid grid-cols-3 sm:flex sm:gap-1 gap-1.5 mt-4 bg-blue-200 rounded-lg p-1 sm:w-fit">
-          {TABS.map(([key,label]) => (
+          {TABS.map(([key,label], i) => (
             <button key={key} onClick={()=>setTab(key)}
-              className={`px-1 sm:px-4 py-2 sm:py-1.5 text-[10px] sm:text-sm font-medium rounded-md transition text-center leading-tight overflow-hidden text-ellipsis whitespace-nowrap ${tab===key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:text-slate-900 hover:bg-blue-300/60'}`}>
+              className={`px-1 sm:px-4 py-2 sm:py-1.5 text-[10px] sm:text-sm font-medium rounded-md transition text-center leading-tight overflow-hidden text-ellipsis whitespace-nowrap ${tab===key ? 'bg-slate-900 text-white shadow-sm' : `text-slate-700 hover:text-slate-900 hover:bg-blue-300/60 ${Math.floor(i/3) % 2 === 1 ? 'max-[639px]:bg-blue-300/50' : ''}`}`}>
               {label}
             </button>
           ))}

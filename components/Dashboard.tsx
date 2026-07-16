@@ -662,11 +662,17 @@ export default function Dashboard() {
 
   const [statsGranularity, setStatsGranularity] = useState<'semana'|'quinzena'|'mes'>('mes');
   const [selectedStatsPeriod, setSelectedStatsPeriod] = useState<{start:string,end:string,label:string} | null>(null);
+  const [statsRangeFilter, setStatsRangeFilter] = useState<{start:string,end:string}>({start:'', end:''});
   const [calendarYear, setCalendarYear] = useState<number>(() => currentYearInLasVegas());
+
+  const statsSorted = useMemo(() => {
+    if (!statsRangeFilter.start || !statsRangeFilter.end) return sorted;
+    return sorted.filter(e => e.data >= statsRangeFilter.start && e.data <= statsRangeFilter.end);
+  }, [sorted, statsRangeFilter]);
 
   function groupEntriesBy(granularity: 'semana'|'quinzena'|'mes') {
     const map: Record<string, { label: string; start: string; end: string; totalRecebido: number; faturado: number; clientes: number; servicos: number }> = {};
-    sorted.forEach(e => {
+    statsSorted.forEach(e => {
       let key: string, label: string, start: string, end: string;
       if (granularity === 'semana') {
         start = mondayOfWeek(e.data);
@@ -696,8 +702,8 @@ export default function Dashboard() {
     return Object.entries(map).sort((a,b) => a[0].localeCompare(b[0])).map(([key, v]) => ({ key, ...v }));
   }
 
-  const monthlyGroups = useMemo(() => groupEntriesBy('mes'), [sorted, settings]);
-  const statsGroups = useMemo(() => groupEntriesBy(statsGranularity), [sorted, settings, statsGranularity]);
+  const monthlyGroups = useMemo(() => groupEntriesBy('mes'), [statsSorted, settings]);
+  const statsGroups = useMemo(() => groupEntriesBy(statsGranularity), [statsSorted, settings, statsGranularity]);
 
   const bestMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido > a.totalRecebido ? b : a) : null, [monthlyGroups]);
   const worstMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido < a.totalRecebido ? b : a) : null, [monthlyGroups]);
@@ -1241,6 +1247,17 @@ export default function Dashboard() {
 
       {tab === 'stats' && (
         <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <div className="flex items-end gap-3 flex-wrap">
+              <Field label="Filtrar de (opcional)"><input type="date" className={inputCls} value={statsRangeFilter.start} onChange={e=>setStatsRangeFilter({...statsRangeFilter, start:e.target.value})}/></Field>
+              <Field label="Até"><input type="date" className={inputCls} value={statsRangeFilter.end} onChange={e=>setStatsRangeFilter({...statsRangeFilter, end:e.target.value})}/></Field>
+              {(statsRangeFilter.start || statsRangeFilter.end) && (
+                <button onClick={()=>setStatsRangeFilter({start:'',end:''})} className="text-xs text-slate-500 underline pb-2.5">Limpar filtro</button>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-400 mt-2">Deixe em branco para ver todo o histórico. Preencha as duas datas para restringir toda a análise abaixo a esse período.</p>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
               <div className="text-xs text-emerald-700 font-medium">🏆 Melhor Mês</div>
@@ -1269,9 +1286,9 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div style={{ width: '100%', height: 220 }}>
+            <div style={{ width: '100%', height: 260 }}>
               <ResponsiveContainer>
-                <LineChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+                <LineChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 40 }}
                   onClick={(e: any) => {
                     if (e && e.activeLabel) {
                       const g = statsGroups.find(g => g.label === e.activeLabel);
@@ -1279,7 +1296,8 @@ export default function Dashboard() {
                     }
                   }}
                 >
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.floor(statsGroups.length/8))} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.ceil(statsGroups.length/6) - 1)}
+                    angle={-40} textAnchor="end" height={60} />
                   <YAxis tick={{ fontSize: 10 }} />
                   <ReferenceLine y={statsSummary.media} stroke="#cbd5e1" strokeDasharray="4 4" />
                   <Tooltip formatter={(v: any) => [`$${money(Number(v))}`, 'Total Recebido']} />

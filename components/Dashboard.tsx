@@ -662,17 +662,19 @@ export default function Dashboard() {
 
   const [statsGranularity, setStatsGranularity] = useState<'semana'|'quinzena'|'mes'>('mes');
   const [selectedStatsPeriod, setSelectedStatsPeriod] = useState<{start:string,end:string,label:string} | null>(null);
-  const [statsRangeFilter, setStatsRangeFilter] = useState<{start:string,end:string}>({start:'', end:''});
+  const [statsPeriodsList, setStatsPeriodsList] = useState<{start:string,end:string}[]>([{start:'', end:''}]);
   const [calendarYear, setCalendarYear] = useState<number>(() => currentYearInLasVegas());
 
-  const statsSorted = useMemo(() => {
-    if (!statsRangeFilter.start || !statsRangeFilter.end) return sorted;
-    return sorted.filter(e => e.data >= statsRangeFilter.start && e.data <= statsRangeFilter.end);
-  }, [sorted, statsRangeFilter]);
+  const activeStatsPeriods = useMemo(() => statsPeriodsList.filter(p => p.start && p.end), [statsPeriodsList]);
 
-  function groupEntriesBy(granularity: 'semana'|'quinzena'|'mes') {
+  const statsSorted = useMemo(() => {
+    if (!activeStatsPeriods.length) return sorted;
+    return sorted.filter(e => activeStatsPeriods.some(p => e.data >= p.start && e.data <= p.end));
+  }, [sorted, activeStatsPeriods]);
+
+  function groupList(entries: Entry[], granularity: 'semana'|'quinzena'|'mes') {
     const map: Record<string, { label: string; start: string; end: string; totalRecebido: number; faturado: number; clientes: number; servicos: number }> = {};
-    statsSorted.forEach(e => {
+    entries.forEach(e => {
       let key: string, label: string, start: string, end: string;
       if (granularity === 'semana') {
         start = mondayOfWeek(e.data);
@@ -702,12 +704,13 @@ export default function Dashboard() {
     return Object.entries(map).sort((a,b) => a[0].localeCompare(b[0])).map(([key, v]) => ({ key, ...v }));
   }
 
-  const monthlyGroups = useMemo(() => groupEntriesBy('mes'), [statsSorted, settings]);
-  const statsGroups = useMemo(() => groupEntriesBy(statsGranularity), [statsSorted, settings, statsGranularity]);
+  const statsGroups = useMemo(() => groupList(statsSorted, statsGranularity), [statsSorted, settings, statsGranularity]);
 
-  const bestMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido > a.totalRecebido ? b : a) : null, [monthlyGroups]);
-  const worstMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((a,b) => b.totalRecebido < a.totalRecebido ? b : a) : null, [monthlyGroups]);
-  const avgMonth = useMemo(() => monthlyGroups.length ? monthlyGroups.reduce((s,g)=>s+g.totalRecebido,0)/monthlyGroups.length : 0, [monthlyGroups]);
+  const GRAN_LABEL = { semana: 'Semana', quinzena: 'Quinzena', mes: 'Mês' } as const;
+
+  const bestGroup = useMemo(() => statsGroups.length ? statsGroups.reduce((a,b) => b.totalRecebido > a.totalRecebido ? b : a) : null, [statsGroups]);
+  const worstGroup = useMemo(() => statsGroups.length ? statsGroups.reduce((a,b) => b.totalRecebido < a.totalRecebido ? b : a) : null, [statsGroups]);
+  const avgGroup = useMemo(() => statsGroups.length ? statsGroups.reduce((s,g)=>s+g.totalRecebido,0)/statsGroups.length : 0, [statsGroups]);
 
   const statsSummary = useMemo(() => {
     const vals = statsGroups.map(g => g.totalRecebido).sort((a,b)=>a-b);
@@ -717,6 +720,31 @@ export default function Dashboard() {
     const mediana = vals.length % 2 ? vals[mid] : (vals[mid-1] + vals[mid]) / 2;
     return { media, mediana, maior: vals[vals.length-1], menor: vals[0] };
   }, [statsGroups]);
+
+  // Series por período (usado quando 2 ou 3 períodos estão ativos, para o grafico multi-linha)
+  const multiPeriodSeries = useMemo(() => {
+    if (activeStatsPeriods.length < 2) return [];
+    return activeStatsPeriods.map((p, i) => {
+      const entriesInRange = sorted.filter(e => e.data >= p.start && e.data <= p.end);
+      return {
+        label: formatInvoicePeriodPT(p.start, p.end),
+        color: ['#0f172a', '#2563eb', '#16a34a'][i] || '#94a3b8',
+        groups: groupList(entriesInRange, statsGranularity),
+      };
+    });
+  }, [activeStatsPeriods, sorted, settings, statsGranularity]);
+
+  const multiPeriodChartData = useMemo(() => {
+    if (!multiPeriodSeries.length) return [];
+    const maxLen = Math.max(...multiPeriodSeries.map(s => s.groups.length));
+    const rows: any[] = [];
+    for (let i = 0; i < maxLen; i++) {
+      const row: any = { posicao: `${GRAN_LABEL[statsGranularity]} ${i+1}` };
+      multiPeriodSeries.forEach((s, si) => { row[`serie${si}`] = s.groups[i]?.totalRecebido ?? null; });
+      rows.push(row);
+    }
+    return rows;
+  }, [multiPeriodSeries, statsGranularity]);
 
   const highlightedDates = useMemo(() => new Set(sorted.map(e => e.data)), [sorted]);
   const calendarYearsAvailable = useMemo(() => {
@@ -1248,30 +1276,44 @@ export default function Dashboard() {
       {tab === 'stats' && (
         <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
           <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <div className="flex items-end gap-3 flex-wrap">
-              <Field label="Filtrar de (opcional)"><input type="date" className={inputCls} value={statsRangeFilter.start} onChange={e=>setStatsRangeFilter({...statsRangeFilter, start:e.target.value})}/></Field>
-              <Field label="Até"><input type="date" className={inputCls} value={statsRangeFilter.end} onChange={e=>setStatsRangeFilter({...statsRangeFilter, end:e.target.value})}/></Field>
-              {(statsRangeFilter.start || statsRangeFilter.end) && (
-                <button onClick={()=>setStatsRangeFilter({start:'',end:''})} className="text-xs text-slate-500 underline pb-2.5">Limpar filtro</button>
-              )}
+            <h2 className="text-sm font-semibold mb-1">Períodos para análise</h2>
+            <p className="text-xs text-slate-500 mb-3">Deixe vazio para ver todo o histórico. Preencha 1, 2 ou 3 períodos para comparar (cada um vira uma linha de cor diferente no gráfico).</p>
+            <div className="flex flex-wrap gap-3 mb-2">
+              {statsPeriodsList.map((p, i) => (
+                <div key={i} className="flex items-end gap-2 border border-slate-200 rounded p-2">
+                  <Field label={`Período ${i+1} - De`}><input type="date" className={inputCls} value={p.start} onChange={e=>{
+                    const next = [...statsPeriodsList]; next[i] = {...next[i], start: e.target.value}; setStatsPeriodsList(next);
+                  }}/></Field>
+                  <Field label="Até"><input type="date" className={inputCls} value={p.end} onChange={e=>{
+                    const next = [...statsPeriodsList]; next[i] = {...next[i], end: e.target.value}; setStatsPeriodsList(next);
+                  }}/></Field>
+                  {statsPeriodsList.length > 1 && (
+                    <button onClick={()=>setStatsPeriodsList(statsPeriodsList.filter((_,idx)=>idx!==i))}
+                      className="text-red-500 hover:text-red-700 text-xs pb-2.5">Remover</button>
+                  )}
+                </div>
+              ))}
             </div>
-            <p className="text-[10px] text-slate-400 mt-2">Deixe em branco para ver todo o histórico. Preencha as duas datas para restringir toda a análise abaixo a esse período.</p>
+            {statsPeriodsList.length < 3 && (
+              <button onClick={()=>setStatsPeriodsList([...statsPeriodsList, {start:'',end:''}])}
+                className="text-xs border border-slate-300 rounded px-3 py-1.5 hover:bg-slate-50">+ Adicionar período</button>
+            )}
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-center">
-              <div className="text-xs text-emerald-700 font-medium">🏆 Melhor Mês</div>
-              <div className="text-sm font-bold text-emerald-900 mt-1">{bestMonth?.label ?? '—'}</div>
-              <div className="text-lg font-bold text-emerald-700">${bestMonth ? money(bestMonth.totalRecebido) : '0.00'}</div>
+              <div className="text-xs text-emerald-700 font-medium">🏆 Melhor {GRAN_LABEL[statsGranularity]}</div>
+              <div className="text-sm font-bold text-emerald-900 mt-1">{bestGroup?.label ?? '—'}</div>
+              <div className="text-lg font-bold text-emerald-700">${bestGroup ? money(bestGroup.totalRecebido) : '0.00'}</div>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-              <div className="text-xs text-red-700 font-medium">📉 Pior Mês</div>
-              <div className="text-sm font-bold text-red-900 mt-1">{worstMonth?.label ?? '—'}</div>
-              <div className="text-lg font-bold text-red-700">${worstMonth ? money(worstMonth.totalRecebido) : '0.00'}</div>
+              <div className="text-xs text-red-700 font-medium">📉 Pior {GRAN_LABEL[statsGranularity]}</div>
+              <div className="text-sm font-bold text-red-900 mt-1">{worstGroup?.label ?? '—'}</div>
+              <div className="text-lg font-bold text-red-700">${worstGroup ? money(worstGroup.totalRecebido) : '0.00'}</div>
             </div>
             <div className="bg-slate-100 border border-slate-200 rounded-lg p-4 text-center col-span-2 sm:col-span-1">
-              <div className="text-xs text-slate-600 font-medium">Média Mensal (Total Recebido)</div>
-              <div className="text-lg font-bold text-slate-800 mt-1">${money(avgMonth)}</div>
+              <div className="text-xs text-slate-600 font-medium">Média por {GRAN_LABEL[statsGranularity]} (Total Recebido)</div>
+              <div className="text-lg font-bold text-slate-800 mt-1">${money(avgGroup)}</div>
             </div>
           </div>
 
@@ -1286,26 +1328,53 @@ export default function Dashboard() {
               ))}
             </div>
 
-            <div style={{ width: '100%', height: 260 }}>
-              <ResponsiveContainer>
-                <LineChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 40 }}
-                  onClick={(e: any) => {
-                    if (e && e.activeLabel) {
-                      const g = statsGroups.find(g => g.label === e.activeLabel);
-                      if (g) setSelectedStatsPeriod({start: g.start, end: g.end, label: g.label});
-                    }
-                  }}
-                >
-                  <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.ceil(statsGroups.length/6) - 1)}
-                    angle={-40} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <ReferenceLine y={statsSummary.media} stroke="#cbd5e1" strokeDasharray="4 4" />
-                  <Tooltip formatter={(v: any) => [`$${money(Number(v))}`, 'Total Recebido']} />
-                  <Line type="monotone" dataKey="totalRecebido" stroke="#0f172a" strokeWidth={2} strokeDasharray="5 4"
-                    dot={{ r: 4, fill: '#0f172a' }} activeDot={{ r: 6 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            {multiPeriodSeries.length >= 2 ? (
+              <>
+                <div className="flex flex-wrap gap-3 mb-2 text-xs">
+                  {multiPeriodSeries.map((s, i) => (
+                    <div key={i} className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 rounded-full inline-block" style={{ background: s.color }} />
+                      <span className="text-slate-600">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ width: '100%', height: 260 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={multiPeriodChartData} margin={{ top: 5, right: 5, left: 0, bottom: 20 }}>
+                      <XAxis dataKey="posicao" tick={{ fontSize: 9 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(v: any, name: any) => [`$${money(Number(v))}`, name]} />
+                      {multiPeriodSeries.map((s, i) => (
+                        <Line key={i} type="monotone" dataKey={`serie${i}`} name={s.label} stroke={s.color} strokeWidth={2}
+                          dot={{ r: 4, fill: s.color }} activeDot={{ r: 6 }} connectNulls />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">Cada linha compara a mesma posição relativa (ex: {GRAN_LABEL[statsGranularity].toLowerCase()} 1 de cada período), não a mesma data absoluta.</p>
+              </>
+            ) : (
+              <div style={{ width: '100%', height: 260 }}>
+                <ResponsiveContainer>
+                  <LineChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 40 }}
+                    onClick={(e: any) => {
+                      if (e && e.activeLabel) {
+                        const g = statsGroups.find(g => g.label === e.activeLabel);
+                        if (g) setSelectedStatsPeriod({start: g.start, end: g.end, label: g.label});
+                      }
+                    }}
+                  >
+                    <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.ceil(statsGroups.length/6) - 1)}
+                      angle={-40} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ReferenceLine y={statsSummary.media} stroke="#cbd5e1" strokeDasharray="4 4" />
+                    <Tooltip formatter={(v: any) => [`$${money(Number(v))}`, 'Total Recebido']} />
+                    <Line type="monotone" dataKey="totalRecebido" stroke="#0f172a" strokeWidth={2} strokeDasharray="5 4"
+                      dot={{ r: 4, fill: '#0f172a' }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
 
             <div className="grid grid-cols-4 gap-2 mt-4">
               <div className="text-center border border-slate-200 rounded p-2">

@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import Auth from '@/components/Auth';
 import ResetPassword from '@/components/ResetPassword';
-import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
+import { ResponsiveContainer, BarChart, Bar, LineChart, Line, Cell, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
 
 const MOODS = ['Feliz','Triste','Animado','Frustrado','Produtivo','Improdutivo','Ativo','Com sono','Falante','Calado'];
 
@@ -661,6 +661,7 @@ export default function Dashboard() {
   }, [sorted]);
 
   const [statsGranularity, setStatsGranularity] = useState<'semana'|'quinzena'|'mes'>('mes');
+  const [selectedStatsPeriod, setSelectedStatsPeriod] = useState<{start:string,end:string,label:string} | null>(null);
   const [calendarYear, setCalendarYear] = useState<number>(() => currentYearInLasVegas());
 
   function groupEntriesBy(granularity: 'semana'|'quinzena'|'mes') {
@@ -1261,7 +1262,7 @@ export default function Dashboard() {
             <h2 className="text-sm font-semibold mb-3">Análise por Período</h2>
             <div className="flex gap-2 mb-4">
               {(['semana','quinzena','mes'] as const).map(g => (
-                <button key={g} onClick={()=>setStatsGranularity(g)}
+                <button key={g} onClick={()=>{setStatsGranularity(g); setSelectedStatsPeriod(null);}}
                   className={`text-xs px-3 py-1.5 rounded-full border transition ${statsGranularity===g ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-300'}`}>
                   {g === 'semana' ? 'Semanal' : g === 'quinzena' ? 'Quinzenal' : 'Mensal'}
                 </button>
@@ -1270,16 +1271,21 @@ export default function Dashboard() {
 
             <div style={{ width: '100%', height: 220 }}>
               <ResponsiveContainer>
-                <BarChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
+                <LineChart data={statsGroups} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+                  onClick={(e: any) => {
+                    if (e && e.activeLabel) {
+                      const g = statsGroups.find(g => g.label === e.activeLabel);
+                      if (g) setSelectedStatsPeriod({start: g.start, end: g.end, label: g.label});
+                    }
+                  }}
+                >
                   <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={Math.max(0, Math.floor(statsGroups.length/8))} />
                   <YAxis tick={{ fontSize: 10 }} />
+                  <ReferenceLine y={statsSummary.media} stroke="#cbd5e1" strokeDasharray="4 4" />
                   <Tooltip formatter={(v: any) => [`$${money(Number(v))}`, 'Total Recebido']} />
-                  <Bar dataKey="totalRecebido" radius={[3,3,0,0]}>
-                    {statsGroups.map((g, i) => (
-                      <Cell key={i} fill={g.totalRecebido >= statsSummary.media ? '#22c55e' : '#f59e0b'} />
-                    ))}
-                  </Bar>
-                </BarChart>
+                  <Line type="monotone" dataKey="totalRecebido" stroke="#0f172a" strokeWidth={2} strokeDasharray="5 4"
+                    dot={{ r: 4, fill: '#0f172a' }} activeDot={{ r: 6 }} />
+                </LineChart>
               </ResponsiveContainer>
             </div>
 
@@ -1316,8 +1322,10 @@ export default function Dashboard() {
                 <tbody>
                   {statsGroups.map((g, i) => {
                     const prev = i > 0 ? statsGroups[i-1].totalRecebido : null;
+                    const isSelected = selectedStatsPeriod?.start === g.start;
                     return (
-                      <tr key={g.key} className="border-t border-slate-100">
+                      <tr key={g.key} onClick={()=>setSelectedStatsPeriod({start:g.start, end:g.end, label:g.label})}
+                        className={`border-t border-slate-100 cursor-pointer hover:bg-slate-50 ${isSelected ? 'bg-slate-100' : ''}`}>
                         <td className="p-2">{g.label}</td>
                         <td className="p-2 text-right">{g.servicos}</td>
                         <td className="p-2 text-right">{g.clientes}</td>
@@ -1332,7 +1340,45 @@ export default function Dashboard() {
                 </tbody>
               </table>
             </div>
+            <p className="text-[10px] text-slate-400 mt-2">Toque numa linha da tabela (ou num ponto do gráfico) para ver os tours daquele período.</p>
           </div>
+
+          {selectedStatsPeriod && (
+            <div className="bg-white rounded-lg border border-slate-200 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold">Tours em: {selectedStatsPeriod.label}</h2>
+                <button onClick={()=>setSelectedStatsPeriod(null)} className="text-xs text-slate-400 hover:text-slate-700">Fechar ✕</button>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100 text-slate-600">
+                    <tr>
+                      <th className="p-2 text-left">Data</th>
+                      <th className="p-2 text-left">Tour</th>
+                      <th className="p-2 text-right">Clientes</th>
+                      <th className="p-2 text-right">Total Recebido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.filter(e => e.data >= selectedStatsPeriod.start && e.data <= selectedStatsPeriod.end).map(e => {
+                      const c = computeEntry(e, settings);
+                      return (
+                        <tr key={e.id} className="border-t border-slate-100">
+                          <td className="p-2">{e.data}</td>
+                          <td className="p-2">{e.tour}</td>
+                          <td className="p-2 text-right">{c.clientesTotal}</td>
+                          <td className="p-2 text-right">${money(c.pagamentoTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                    {sorted.filter(e => e.data >= selectedStatsPeriod.start && e.data <= selectedStatsPeriod.end).length === 0 && (
+                      <tr><td colSpan={4} className="p-4 text-center text-slate-400">Nenhum tour nesse período.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-3">

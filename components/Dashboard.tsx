@@ -430,6 +430,55 @@ export default function Dashboard() {
     return Object.entries(counts).sort((a,b) => b[1] - a[1]);
   }, [customEntries]);
 
+  const [comparePeriods, setComparePeriods] = useState<{start:string,end:string}[]>([
+    {start:'', end:''}, {start:'', end:''}
+  ]);
+
+  function computePeriodStats(start: string, end: string) {
+    const s = { servicos:0, clientes:0, espanhol:0, portugues:0, italiano:0, ingles:0, heli:0, cityQtdVendidos:0, faturado:0, tipClientes:0, comissaoGas:0, totalRecebido:0 };
+    if (!start || !end) return s;
+    sorted.filter(e => e.data >= start && e.data <= end).forEach(e => {
+      const c = computeEntry(e, settings);
+      s.servicos += 1;
+      s.clientes += c.clientesTotal;
+      s.espanhol += num(e.espanhol);
+      s.portugues += num(e.portugues);
+      s.italiano += num(e.italiano);
+      s.ingles += num(e.ingles);
+      s.heli += num(e.heliQtd);
+      s.cityQtdVendidos += num(e.cityQtd);
+      s.faturado += c.vendasTotal;
+      s.tipClientes += num(e.tipPax);
+      s.comissaoGas += num(e.tipGas);
+      s.totalRecebido += c.pagamentoTotal;
+    });
+    return s;
+  }
+
+  const compareStats = useMemo(() => comparePeriods.map(p => computePeriodStats(p.start, p.end)), [comparePeriods, sorted, settings]);
+
+  function pctChange(current: number, previous: number): string {
+    if (!previous) return current ? '+100%' : '—';
+    const pct = ((current - previous) / previous) * 100;
+    const sign = pct > 0 ? '+' : '';
+    return `${sign}${pct.toFixed(0)}%`;
+  }
+
+  const COMPARE_METRICS: { key: keyof ReturnType<typeof computePeriodStats>, label: string, isMoney?: boolean }[] = [
+    { key: 'servicos', label: 'Serviços' },
+    { key: 'clientes', label: 'Total de Clientes' },
+    { key: 'espanhol', label: 'Espanhol' },
+    { key: 'portugues', label: 'Português (Brasileiros)' },
+    { key: 'italiano', label: 'Italiano' },
+    { key: 'ingles', label: 'Inglês' },
+    { key: 'cityQtdVendidos', label: 'City Tours Vendidos' },
+    { key: 'heli', label: 'Helicóptero Vendidos' },
+    { key: 'faturado', label: 'Valor Total da Invoice', isMoney: true },
+    { key: 'tipClientes', label: 'Tip Clientes', isMoney: true },
+    { key: 'comissaoGas', label: 'Comissão Gas', isMoney: true },
+    { key: 'totalRecebido', label: 'Total Recebido', isMoney: true },
+  ];
+
   const customStats = useMemo(() => {
     const s = { servicos:0, espanhol:0, portugues:0, italiano:0, ingles:0, clientes:0, faturado:0, cityQtdVendidos:0, tipClientes:0, comissaoGas:0, heli:0, totalRecebido:0 };
     customEntries.forEach(e => {
@@ -841,6 +890,74 @@ export default function Dashboard() {
 
       {tab === 'relatorios' && (
         <div className="no-print max-w-5xl mx-auto px-3 sm:px-4 py-4 space-y-6">
+          <div className="bg-white rounded-lg border border-slate-200 p-4">
+            <h2 className="text-sm font-semibold mb-1">Comparar Períodos</h2>
+            <p className="text-xs text-slate-500 mb-3">Escolha de 2 a 4 períodos para comparar lado a lado, com a variação percentual entre cada um.</p>
+
+            <div className="flex flex-wrap gap-3 mb-3">
+              {comparePeriods.map((p, i) => (
+                <div key={i} className="flex items-end gap-2 border border-slate-200 rounded p-2">
+                  <Field label={`Período ${i+1} - De`}><input type="date" className={inputCls} value={p.start} onChange={e=>{
+                    const next = [...comparePeriods]; next[i] = {...next[i], start: e.target.value}; setComparePeriods(next);
+                  }}/></Field>
+                  <Field label="Até"><input type="date" className={inputCls} value={p.end} onChange={e=>{
+                    const next = [...comparePeriods]; next[i] = {...next[i], end: e.target.value}; setComparePeriods(next);
+                  }}/></Field>
+                  {comparePeriods.length > 2 && (
+                    <button onClick={()=>setComparePeriods(comparePeriods.filter((_,idx)=>idx!==i))}
+                      className="text-red-500 hover:text-red-700 text-xs pb-2.5">Remover</button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {comparePeriods.length < 4 && (
+              <button onClick={()=>setComparePeriods([...comparePeriods, {start:'',end:''}])}
+                className="text-xs border border-slate-300 rounded px-3 py-1.5 hover:bg-slate-50 mb-4">+ Adicionar período</button>
+            )}
+
+            {comparePeriods.every(p => p.start && p.end) ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-100 text-slate-600">
+                    <tr>
+                      <th className="p-2 text-left">Métrica</th>
+                      {comparePeriods.map((p, i) => (
+                        <React.Fragment key={i}>
+                          <th className="p-2 text-right">{formatInvoicePeriod(p.start, p.end)}</th>
+                          {i > 0 && <th className="p-2 text-right text-slate-400">Variação</th>}
+                        </React.Fragment>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {COMPARE_METRICS.map(m => (
+                      <tr key={m.key} className="border-t border-slate-100">
+                        <td className="p-2 text-left text-slate-600">{m.label}</td>
+                        {compareStats.map((s, i) => {
+                          const val = s[m.key];
+                          const prevVal = i > 0 ? compareStats[i-1][m.key] : null;
+                          return (
+                            <React.Fragment key={i}>
+                              <td className="p-2 text-right font-medium">{m.isMoney ? `$${money(val)}` : val}</td>
+                              {i > 0 && (
+                                <td className={`p-2 text-right ${prevVal !== null && val > prevVal ? 'text-emerald-600' : prevVal !== null && val < prevVal ? 'text-red-500' : 'text-slate-400'}`}>
+                                  {pctChange(val, prevVal ?? 0)}
+                                </td>
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">Preencha as datas de todos os períodos para ver a comparação.</p>
+            )}
+          </div>
+
           <div className="bg-white rounded-lg border border-slate-200 p-4">
             <h2 className="text-sm font-semibold mb-3">Relatório por período (escolha as datas)</h2>
             <div className="flex flex-wrap gap-3 items-end mb-4">

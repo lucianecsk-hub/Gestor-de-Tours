@@ -681,7 +681,7 @@ export default function Dashboard() {
         const endD = parseYMD(start); endD.setDate(endD.getDate()+6);
         end = formatYMD(endD);
         key = start;
-        label = `Semana de ${start.slice(8,10)}/${start.slice(5,7)}`;
+        label = `Semana de ${start.slice(8,10)}/${start.slice(5,7)}/${start.slice(0,4)}`;
       } else if (granularity === 'quinzena') {
         const b = quinzenaBounds(e.data);
         start = b.start; end = b.end; key = start;

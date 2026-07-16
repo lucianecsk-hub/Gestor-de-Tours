@@ -6,7 +6,7 @@ import Auth from '@/components/Auth';
 import ResetPassword from '@/components/ResetPassword';
 import { ResponsiveContainer, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ReferenceLine } from 'recharts';
 
-const MOODS = ['Feliz','Triste','Animado','Frustrado','Improdutivo','Produtivo','Com sono','Ativo','Falante','Calado'];
+const MOODS = ['Feliz','Triste','Animado','Frustrado','Produtivo','Improdutivo','Ativo','Com sono','Falante','Calado'];
 
 const MOOD_META: Record<string, { emoji: string; score: number }> = {
   'Feliz':       { emoji: '😄', score: 2 },

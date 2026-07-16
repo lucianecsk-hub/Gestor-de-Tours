@@ -597,6 +597,19 @@ export default function Dashboard() {
       .map(([data, v]) => ({ data: data.slice(5), score: Number((v.total / v.count).toFixed(2)) }));
   }, [sorted]);
 
+  const notaByDay = useMemo(() => {
+    const map: Record<string, { total: number; count: number }> = {};
+    sorted.forEach(e => {
+      if (e.nota === '' || e.nota === undefined || e.nota === null) return;
+      if (!map[e.data]) map[e.data] = { total: 0, count: 0 };
+      map[e.data].total += num(e.nota);
+      map[e.data].count += 1;
+    });
+    return Object.entries(map)
+      .sort((a,b) => a[0].localeCompare(b[0]))
+      .map(([data, v]) => ({ data: data.slice(5), nota: Number((v.total / v.count).toFixed(1)) }));
+  }, [sorted]);
+
   const avgNota = useMemo(() => {
     const withNota = sorted.filter(e => e.nota !== '' && e.nota !== undefined && e.nota !== null);
     if (!withNota.length) return null;
@@ -1156,6 +1169,26 @@ export default function Dashboard() {
                       <Bar dataKey="score" radius={[3,3,0,0]}>
                         {moodByDay.map((d, i) => (
                           <Cell key={i} fill={d.score > 0.3 ? '#22c55e' : d.score < -0.3 ? '#ef4444' : '#f59e0b'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            )}
+
+            {notaByDay.length > 0 && (
+              <div className="mt-6">
+                <span className="text-xs font-medium text-slate-600">Nota do tour por dia</span>
+                <div className="mt-2" style={{ width: '100%', height: 200 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={notaByDay} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="data" tick={{ fontSize: 10 }} />
+                      <YAxis domain={[0, 5]} tick={{ fontSize: 10 }} />
+                      <Tooltip formatter={(v: any) => [v, 'Nota']} labelFormatter={(l) => `Dia ${l}`} />
+                      <Bar dataKey="nota" radius={[3,3,0,0]}>
+                        {notaByDay.map((d, i) => (
+                          <Cell key={i} fill={d.nota >= 4 ? '#22c55e' : d.nota >= 2.5 ? '#f59e0b' : '#ef4444'} />
                         ))}
                       </Bar>
                     </BarChart>

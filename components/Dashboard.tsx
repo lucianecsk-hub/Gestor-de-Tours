@@ -54,6 +54,7 @@ type Entry = {
   data: string;
   tour: string;
   valorTour: string;
+  vendaTickets: string;
   espanhol: string; portugues: string; italiano: string; ingles: string;
   pgtoExtraPax: string;
   cityQtd: string; cityQtdTotal: string; cityPreco: string;
@@ -86,6 +87,7 @@ function emptyEntry(gasDefault: string = '40'): Entry {
     data: todayInLasVegas(),
     tour: 'GCW',
     valorTour: '',
+    vendaTickets: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
     pgtoExtraPax: '0',
     cityQtd: '', cityQtdTotal: '', cityPreco: '',
@@ -107,7 +109,7 @@ function computeEntry(e: Entry, settings: Settings) {
   const cityTotal = num(e.cityQtd) * num(e.cityPreco);
   const heliTotal = num(e.heliQtd) * num(e.heliPreco);
   const pgtoExtraTotal = num(e.portugues) * num(e.pgtoExtraPax);
-  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal + pgtoExtraTotal;
+  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(e.vendaTickets);
   const tipTotal = num(e.tipPax) + num(e.tipGas);
   const pagamentoTotal = num(e.pagamentoInvoice) + tipTotal;
   const comissaoCity = cityTotal;
@@ -320,10 +322,10 @@ export default function Dashboard() {
     const cityTotal = num(form.cityQtd) * num(form.cityPreco);
     const heliTotal = num(form.heliQtd) * num(form.heliPreco);
     const pgtoExtraTotal = num(form.portugues) * num(form.pgtoExtraPax);
-    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal + pgtoExtraTotal;
+    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(form.vendaTickets);
     setForm(f => ({ ...f, pagamentoInvoice: vendasTotal ? String(vendasTotal) : '' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco, form.portugues, form.pgtoExtraPax]);
+  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco, form.portugues, form.pgtoExtraPax, form.vendaTickets]);
 
   async function recalcQuinzena(allEntries: Entry[], dateStr: string, userId: string): Promise<Entry[]> {
     if (!dateStr) return allEntries;
@@ -341,7 +343,7 @@ export default function Dashboard() {
         const novoCityTotal = num(en.cityQtd) * rate;
         const heliTotal = num(en.heliQtd) * num(en.heliPreco);
         const pgtoExtraTotal = num(en.portugues) * num(en.pgtoExtraPax);
-        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal + pgtoExtraTotal;
+        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal + pgtoExtraTotal + num(en.vendaTickets);
         const newEn = { ...en, cityPreco: rateStr, cityQtdTotal: totalStr, pagamentoInvoice: novoVendasTotal ? String(novoVendasTotal) : en.pagamentoInvoice };
         toPersist.push(newEn);
         return newEn;
@@ -897,6 +899,7 @@ export default function Dashboard() {
                   </select>
                 </Field>
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
+                <Field label="Venda Tickets ($)"><input type="number" className={inputCls} value={form.vendaTickets} onChange={e=>setForm({...form,vendaTickets:e.target.value})}/></Field>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
@@ -1658,6 +1661,15 @@ export default function Dashboard() {
                             <td className="py-1">{dataFmt}: Extra Pax {e.portugues} Brasileiros</td>
                             <td className="py-1 text-right">{money(c.pgtoExtraTotal)}</td>
                             <td className="py-1 text-right">{money(c.pgtoExtraTotal)}</td>
+                            <td></td>
+                          </tr>
+                        )}
+                        {num(e.vendaTickets) > 0 && (
+                          <tr className="text-slate-500">
+                            <td></td>
+                            <td className="py-1">{dataFmt}: Venda Tickets</td>
+                            <td className="py-1 text-right">{money(num(e.vendaTickets))}</td>
+                            <td className="py-1 text-right">{money(num(e.vendaTickets))}</td>
                             <td></td>
                           </tr>
                         )}

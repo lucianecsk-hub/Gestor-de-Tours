@@ -899,7 +899,6 @@ export default function Dashboard() {
                   </select>
                 </Field>
                 <Field label="Valor do Tour ($)"><input type="number" className={inputCls} value={form.valorTour} onChange={e=>setForm({...form,valorTour:e.target.value})}/></Field>
-                <Field label="Venda Tickets ($)"><input type="number" className={inputCls} value={form.vendaTickets} onChange={e=>setForm({...form,vendaTickets:e.target.value})}/></Field>
               </div>
 
               <div className="grid grid-cols-4 gap-2">
@@ -936,6 +935,7 @@ export default function Dashboard() {
               <div className="flex flex-wrap gap-3">
                 <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
                 <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
+                <Field label="Venda Tickets ($)"><input type="number" className={inputCls} value={form.vendaTickets} onChange={e=>setForm({...form,vendaTickets:e.target.value})}/></Field>
               </div>
 
               <div className="flex flex-wrap gap-3">

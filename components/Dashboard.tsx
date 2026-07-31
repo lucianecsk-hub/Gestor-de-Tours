@@ -928,6 +928,11 @@ export default function Dashboard() {
 
               <div className="flex flex-wrap gap-3">
                 <Field label="Pgto Extra por Pax - Brasileiros ($)"><input type="number" className={inputCls} value={form.pgtoExtraPax} onChange={e=>setForm({...form,pgtoExtraPax:e.target.value})}/></Field>
+                <Field label="Total Extra Pax ($)">
+                  <div className={inputCls + " bg-slate-100 text-slate-700 font-semibold"}>
+                    ${money(num(form.portugues) * num(form.pgtoExtraPax))}
+                  </div>
+                </Field>
               </div>
               <p className="text-xs text-slate-400 -mt-2">Preenchido automaticamente: $10 por pax brasileiro (Português). Pode editar se precisar. Multiplica pelo nº de brasileiros e entra no Pagamento Invoice e na invoice.</p>
 

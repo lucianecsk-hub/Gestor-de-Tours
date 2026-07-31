@@ -236,7 +236,7 @@ export default function Dashboard() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [invoiceRange, setInvoiceRange] = useState({start:'', end:''});
+  const [invoiceRange, setInvoiceRange] = useState(() => quinzenaBounds(todayInLasVegas()));
   const [invoiceDataEmissao, setInvoiceDataEmissao] = useState(() => todayInLasVegas());
   const [invoiceNum, setInvoiceNum] = useState<number | null>(null);
   const [invoiceNumInput, setInvoiceNumInput] = useState<number>(settings.proximoInvoiceNum);
@@ -820,7 +820,7 @@ export default function Dashboard() {
       // não bloqueia o fluxo se o histórico falhar
     }
     setInvoiceNum(null);
-    setInvoiceRange({start:'', end:''});
+    setInvoiceRange(quinzenaBounds(todayInLasVegas()));
     setInvoiceDataEmissao(todayInLasVegas());
   }
 

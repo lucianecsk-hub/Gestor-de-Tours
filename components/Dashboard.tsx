@@ -55,7 +55,6 @@ type Entry = {
   tour: string;
   valorTour: string;
   vendaTickets: string;
-  upgradeTickets: string;
   extrasDescricao: string;
   extrasValor: string;
   espanhol: string; portugues: string; italiano: string; ingles: string;
@@ -91,7 +90,6 @@ function emptyEntry(gasDefault: string = '40'): Entry {
     tour: 'GCW',
     valorTour: '',
     vendaTickets: '',
-    upgradeTickets: '',
     extrasDescricao: '',
     extrasValor: '',
     espanhol: '', portugues: '', italiano: '', ingles: '',
@@ -115,7 +113,7 @@ function computeEntry(e: Entry, settings: Settings) {
   const cityTotal = num(e.cityQtd) * num(e.cityPreco);
   const heliTotal = num(e.heliQtd) * num(e.heliPreco);
   const pgtoExtraTotal = num(e.portugues) * num(e.pgtoExtraPax);
-  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(e.vendaTickets) + num(e.upgradeTickets) + num(e.extrasValor);
+  const vendasTotal = num(e.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(e.vendaTickets) + num(e.extrasValor);
   const tipTotal = num(e.tipPax) + num(e.tipGas);
   const pagamentoTotal = num(e.pagamentoInvoice) + tipTotal;
   const comissaoCity = cityTotal;
@@ -328,10 +326,10 @@ export default function Dashboard() {
     const cityTotal = num(form.cityQtd) * num(form.cityPreco);
     const heliTotal = num(form.heliQtd) * num(form.heliPreco);
     const pgtoExtraTotal = num(form.portugues) * num(form.pgtoExtraPax);
-    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(form.vendaTickets) + num(form.upgradeTickets) + num(form.extrasValor);
+    const vendasTotal = num(form.valorTour) + cityTotal + heliTotal + pgtoExtraTotal + num(form.vendaTickets) + num(form.extrasValor);
     setForm(f => ({ ...f, pagamentoInvoice: vendasTotal ? String(vendasTotal) : '' }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco, form.portugues, form.pgtoExtraPax, form.vendaTickets, form.upgradeTickets, form.extrasValor]);
+  }, [form.valorTour, form.cityQtd, form.cityPreco, form.heliQtd, form.heliPreco, form.portugues, form.pgtoExtraPax, form.vendaTickets, form.extrasValor]);
 
   async function recalcQuinzena(allEntries: Entry[], dateStr: string, userId: string): Promise<Entry[]> {
     if (!dateStr) return allEntries;
@@ -349,7 +347,7 @@ export default function Dashboard() {
         const novoCityTotal = num(en.cityQtd) * rate;
         const heliTotal = num(en.heliQtd) * num(en.heliPreco);
         const pgtoExtraTotal = num(en.portugues) * num(en.pgtoExtraPax);
-        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal + pgtoExtraTotal + num(en.vendaTickets) + num(en.upgradeTickets) + num(en.extrasValor);
+        const novoVendasTotal = num(en.valorTour) + novoCityTotal + heliTotal + pgtoExtraTotal + num(en.vendaTickets) + num(en.extrasValor);
         const newEn = { ...en, cityPreco: rateStr, cityQtdTotal: totalStr, pagamentoInvoice: novoVendasTotal ? String(novoVendasTotal) : en.pagamentoInvoice };
         toPersist.push(newEn);
         return newEn;
@@ -947,7 +945,6 @@ export default function Dashboard() {
                 <Field label="Helicóptero - Qtd vendida"><input type="number" className={inputCls} value={form.heliQtd} onChange={e=>setForm({...form,heliQtd:e.target.value})}/></Field>
                 <Field label="Helicóptero - Preço unit ($)"><input type="number" className={inputCls} value={form.heliPreco} onChange={e=>setForm({...form,heliPreco:e.target.value})}/></Field>
                 <Field label="Venda Tickets ($)"><input type="number" className={inputCls} value={form.vendaTickets} onChange={e=>setForm({...form,vendaTickets:e.target.value})}/></Field>
-                <Field label="Upgrade Tickets ($)"><input type="number" className={inputCls} value={form.upgradeTickets} onChange={e=>setForm({...form,upgradeTickets:e.target.value})}/></Field>
               </div>
 
               <div className="flex flex-wrap gap-3">
@@ -1687,15 +1684,6 @@ export default function Dashboard() {
                             <td className="py-1">{dataFmt}: Venda Tickets</td>
                             <td className="py-1 text-right">{money(num(e.vendaTickets))}</td>
                             <td className="py-1 text-right">{money(num(e.vendaTickets))}</td>
-                            <td></td>
-                          </tr>
-                        )}
-                        {num(e.upgradeTickets) > 0 && (
-                          <tr className="text-slate-500">
-                            <td></td>
-                            <td className="py-1">{dataFmt}: Upgrade Tickets</td>
-                            <td className="py-1 text-right">{money(num(e.upgradeTickets))}</td>
-                            <td className="py-1 text-right">{money(num(e.upgradeTickets))}</td>
                             <td></td>
                           </tr>
                         )}
